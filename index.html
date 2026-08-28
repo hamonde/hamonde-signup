@@ -40,6 +40,12 @@
     border:1px solid var(--line); border-radius:12px; padding:12px 14px}
   textarea{min-height:78px; resize:vertical}
   input:focus,textarea:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
+  .suffixed{display:flex; align-items:center; background:#fff;
+    border:1px solid var(--line); border-radius:12px; padding:0 14px}
+  .suffixed:focus-within{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
+  .suffixed input{flex:1; min-width:0; width:auto; border:0; padding:12px 0; background:transparent}
+  .suffixed input:focus{outline:none}
+  .suffixed .sfx{color:var(--muted); white-space:nowrap; padding-left:2px}
   .mchk{font-size:13px; margin-top:8px; min-height:18px; font-weight:500}
   .mchk.ok{color:var(--go)} .mchk.no{color:var(--stop)}
   .chk{display:flex; align-items:center; gap:8px; margin-top:16px; font-size:14px; color:var(--ink)}
@@ -135,6 +141,9 @@ const CONFIG = {
 };
 
 const DEFAULT_SUCCESS = '已完成該次會員活動報名，請留意 LINE 訊息以確認資訊。';
+
+// 後台帳號固定網域：登入時只需輸入 @ 前面的帳號
+const ADMIN_DOMAIN = '@hamonde.com';
 
 // ============================================================
 // 後端：demo（記憶體）與 supabase（真資料庫）兩種實作，介面相同
@@ -412,12 +421,16 @@ async function renderMembersPanel(){
 function renderLogin(){
   app.innerHTML=`<div class="brand">${esc(CONFIG.CAFE_NAME)}・後台</div>
     <div class="card"><h1 style="font-size:20px">管理者登入</h1>
-    <label for="em">Email</label><input id="em" type="email" autocomplete="username">
+    <label for="em">帳號</label>
+    <div class="suffixed"><input id="em" type="text" autocomplete="username"
+      autocapitalize="off" autocorrect="off" spellcheck="false"><span class="sfx">${ADMIN_DOMAIN}</span></div>
     <label for="pw">密碼</label><input id="pw" type="password" autocomplete="current-password">
     <div class="err" id="lerr"></div>
     <button class="btn" id="login">登入</button></div>`;
   app.querySelector('#login').onclick=async()=>{
-    try{ await backend.signIn(app.querySelector('#em').value, app.querySelector('#pw').value); renderAdmin(); }
+    const acct=app.querySelector('#em').value.trim().replace(/@+$/,'');
+    const email=acct.includes('@') ? acct : acct+ADMIN_DOMAIN;
+    try{ await backend.signIn(email, app.querySelector('#pw').value); renderAdmin(); }
     catch(e){ app.querySelector('#lerr').textContent='登入失敗，請確認帳號密碼。'; }
   };
 }
