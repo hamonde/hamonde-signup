@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAMONDE 活動報名</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --ink:#2A211A; --paper:#F4ECDE; --card:#FFFDF9; --line:#E4D8C4;
+    --muted:#8B7B67; --accent:#B5651D; --accent-ink:#7A4413;
+    --go:#3F7D53; --stop:#B23A2E;
+    --shadow:0 1px 2px rgba(42,33,26,.06), 0 8px 24px rgba(42,33,26,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Noto Sans TC",system-ui,sans-serif; line-height:1.6; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:640px; margin:0 auto; padding:24px 20px 64px}
+  .brand{font-family:"Fraunces",serif; font-weight:600; font-size:15px; letter-spacing:.02em;
+    color:var(--accent-ink); margin:8px 0 20px; display:flex; align-items:center; gap:8px}
+  .brand::before{content:""; width:22px; height:22px; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #d99a2b, var(--accent)); display:inline-block}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:18px;
+    padding:24px; box-shadow:var(--shadow)}
+  h1{font-family:"Fraunces",serif; font-weight:600; font-size:26px; line-height:1.25; margin:0 0 6px}
+  .date{color:var(--muted); font-size:14px; margin-bottom:16px}
+  .desc{white-space:pre-wrap; margin:0 0 22px; color:#4a3d31}
+  .statusbar{display:flex; gap:8px; align-items:center; padding:16px 0 18px;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin-bottom:20px}
+  .pill{display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:500;
+    padding:6px 14px; border-radius:999px; background:#f3ead9; color:var(--accent-ink)}
+  .pill.go{background:#e2f0e6; color:var(--go)}
+  .pill.go::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--go)}
+  .pill.closed{background:#f6dedb; color:var(--stop)}
+  label{display:block; font-size:13px; color:var(--muted); margin:14px 0 6px}
+  input,textarea{width:100%; font:inherit; color:var(--ink); background:#fff;
+    border:1px solid var(--line); border-radius:12px; padding:12px 14px}
+  textarea{min-height:78px; resize:vertical}
+  input:focus,textarea:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
+  .mchk{font-size:13px; margin-top:8px; min-height:18px; font-weight:500}
+  .mchk.ok{color:var(--go)} .mchk.no{color:var(--stop)}
+  .chk{display:flex; align-items:center; gap:8px; margin-top:16px; font-size:14px; color:var(--ink)}
+  .chk input{width:auto}
+  .btn{width:100%; font:inherit; font-weight:700; color:#fff; background:var(--accent);
+    border:none; border-radius:12px; padding:15px; margin-top:20px; cursor:pointer; transition:transform .05s, background .2s}
+  .btn:hover{background:var(--accent-ink)} .btn:active{transform:translateY(1px)}
+  .btn:disabled{background:var(--muted); cursor:not-allowed; opacity:.7}
+  .btn.ghost{background:transparent; color:var(--accent-ink); border:1px solid var(--line)}
+  .btn.ghost:hover{background:#f3ead9}
+  .state{text-align:center; padding:14px 0}
+  .state .icon{font-size:40px; margin-bottom:8px}
+  .state h2{font-family:"Fraunces",serif; font-size:22px; margin:0 0 8px}
+  .state p{color:var(--muted); margin:0}
+  .banner{background:#fff5e2; border:1px solid #f0dcae; color:#7a5a12; font-size:13px;
+    padding:10px 14px; border-radius:12px; margin-bottom:16px}
+  .err{color:var(--stop); font-size:13px; margin-top:10px; min-height:18px}
+  .row{display:flex; gap:10px; flex-wrap:wrap} .row > *{flex:1}
+  .ev{border:1px solid var(--line); border-radius:14px; padding:16px; margin-top:14px; background:#fff}
+  .ev h3{margin:0 0 4px; font-size:17px; font-family:"Fraunces",serif; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .ev .meta{font-size:13px; color:var(--muted); margin-bottom:12px}
+  .ev .acts{display:flex; gap:8px; flex-wrap:wrap}
+  .ev .acts button{flex:0 0 auto; font-size:13px; padding:8px 12px; border-radius:10px;
+    border:1px solid var(--line); background:#fff; cursor:pointer; color:var(--ink)}
+  .ev .acts button:hover{background:#f3ead9}
+  .count{font-family:"Fraunces",serif; font-weight:600}
+  .names{margin-top:12px; font-size:13px; color:#4a3d31; border-top:1px dashed var(--line); padding-top:10px}
+  .names div{padding:3px 0}
+  .msg{margin-top:12px; border-top:1px dashed var(--line); padding-top:12px}
+  .msg-label{font-size:12px; color:var(--muted); margin-bottom:6px}
+  .msg textarea{min-height:84px; font-size:13px; line-height:1.55}
+  .mini{margin-top:8px; font-size:13px; padding:9px 16px; border-radius:10px; border:none; background:var(--accent); color:#fff; cursor:pointer}
+  .mini:hover{background:var(--accent-ink)}
+  .hint{font-size:12px; color:var(--muted); margin-top:8px}
+  .nrow{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:5px 0}
+  .nbtn{flex:0 0 auto; background:#fff; color:var(--accent-ink); border:1px solid var(--line); padding:6px 12px; font-size:12px; border-radius:9px; cursor:pointer}
+  .nbtn:hover{background:#f3ead9}
+  .listhead{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin:26px 0 12px}
+  .listhead h2{font-family:"Fraunces",serif; font-size:18px; margin:0}
+  .filters{display:flex; gap:6px}
+  .ftab{font-size:13px; padding:7px 13px; border-radius:999px; border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer}
+  .ftab.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .tbl{width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden}
+  .tbl th{font-size:12px; color:var(--muted); font-weight:500; text-align:left; padding:11px 14px; background:#faf4e8; border-bottom:1px solid var(--line)}
+  .srow{cursor:pointer}
+  .srow:hover{background:#faf4e8}
+  .srow td{padding:12px 14px; vertical-align:middle; border-bottom:1px solid var(--line)}
+  .ename{font-weight:700; font-size:14px; line-height:1.35}
+  .etime{font-size:12px; color:var(--muted); margin-top:2px}
+  .cnum{text-align:center; font-family:"Fraunces",serif; font-weight:600; white-space:nowrap}
+  .cstat{text-align:center}
+  .ccaret{text-align:center; width:26px}
+  .caret{display:inline-block; transition:transform .2s; color:var(--muted); font-size:12px}
+  .srow.open .caret{transform:rotate(90deg)}
+  .drow > td{padding:0; background:#fbf7f0; border-bottom:1px solid var(--line)}
+  .detail{padding:16px}
+  .dacts{display:flex; gap:8px; flex-wrap:wrap}
+  .mini2{font-size:13px; padding:9px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; cursor:pointer; font-weight:600}
+  .mini2.ghost{background:#fff; color:var(--accent-ink); border:1px solid var(--line); font-weight:500}
+  .dn-title{font-size:12px; color:var(--muted); margin:14px 0 6px}
+  .empty{text-align:center; color:var(--muted); padding:20px!important}
+  .tabs2{display:flex; gap:8px; margin-bottom:16px}
+  .t2{font-size:14px; font-weight:600; padding:9px 18px; border-radius:11px; border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer}
+  .t2.on{background:var(--accent); color:#fff; border-color:var(--accent)}
+  .mrow{display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line); border-radius:11px; background:#fff; margin-top:8px}
+  .mrow.off{opacity:.55}
+  .mname{font-weight:600; font-size:14px}
+  .mph{font-size:12px; color:var(--muted); margin-top:2px}
+  .mact{display:flex; gap:6px; flex:0 0 auto}
+  .mact button{font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid var(--line); background:#fff; cursor:pointer; color:var(--ink)}
+  .mact button:hover{background:#f3ead9}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%);
+    background:var(--ink); color:#fff; padding:10px 18px; border-radius:999px; font-size:13px;
+    opacity:0; transition:opacity .3s; pointer-events:none; max-width:90%}
+  .toast.show{opacity:1}
+  a{color:var(--accent-ink)}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// 設定區：設定好 Supabase 後，DEMO_MODE 改成 false 並填入下面兩個值
+// ============================================================
+const CONFIG = {
+  DEMO_MODE: false,
+  SUPABASE_URL: 'https://hbduagmuevfzlypckouq.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_cLhra1M543iJgTPTzTTwhg_ZfqANPvS',
+  CAFE_NAME: 'HAMONDE CAFE 愛蒙娣咖啡',
+};
+
+const DEFAULT_SUCCESS = '已完成該次會員活動報名，請留意 LINE 訊息以確認資訊。';
+
+// ============================================================
+// 後端：demo（記憶體）與 supabase（真資料庫）兩種實作，介面相同
+// ============================================================
+let backend;
+
+function makeSupabaseBackend(){
+  const sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  return {
+    demo:false,
+    async getEvent(slug){ const {data}=await sb.rpc('get_event',{p_slug:slug}); return data; },
+    async verifyMember(ident){ const {data}=await sb.rpc('verify_member',{p_ident:ident}); return data||{ok:false}; },
+    async register(slug,ident,name,phone){ const {data,error}=await sb.rpc('register_for_event',
+      {p_slug:slug,p_ident:ident,p_name:name,p_phone:phone}); if(error) throw error; return data; },
+    async signIn(email,pw){ const {error}=await sb.auth.signInWithPassword({email,password:pw}); if(error) throw error; },
+    async signOut(){ await sb.auth.signOut(); },
+    async session(){ const {data}=await sb.auth.getSession(); return data.session; },
+    async listEvents(){ const {data}=await sb.from('events').select('*').order('created_at',{ascending:false});
+      const out=[]; for(const e of (data||[])){
+        const {count}=await sb.from('registrations').select('*',{count:'exact',head:true}).eq('event_id',e.id);
+        out.push({...e, registered:count||0}); } return out; },
+    async createEvent(ev){ const {data,error}=await sb.from('events').insert(ev).select().single();
+      if(error) throw error; return data; },
+    async setOpen(id,open){ await sb.from('events').update({is_open:open}).eq('id',id); },
+    async listRegs(eventId){ const {data}=await sb.from('registrations').select('*')
+      .eq('event_id',eventId).order('created_at'); return data||[]; },
+    async listMembers(){ const {data}=await sb.from('members').select('*').order('created_at',{ascending:false}); return data||[]; },
+    async addMember(mem){ const {data,error}=await sb.from('members').insert(mem).select().single(); if(error) throw error; return data; },
+    async setMemberActive(id,active){ await sb.from('members').update({active}).eq('id',id); },
+    async deleteMember(id){ await sb.from('members').delete().eq('id',id); },
+  };
+}
+
+function makeDemoBackend(){
+  const digits=s=>String(s||'').replace(/[^0-9]/g,'');
+  const members=[
+    {id:'m1', code:null, phone:'0912-000-111', name:'王小明', active:true},
+    {id:'m2', code:null, phone:'0922-000-222', name:'林美美', active:true},
+    {id:'m3', code:null, phone:'0955-000-555', name:'陳美麗', active:true},
+    {id:'m4', code:null, phone:'0933-000-333', name:'王大同', active:false},
+  ];
+  const events=[
+    {id:'d1',slug:'coffee01',title:'手沖咖啡體驗課',description:'跟著店長從選豆到手沖，帶走一包專屬配方豆。\n適合完全新手，現場備有點心。',
+      event_date:new Date(Date.now()+7*864e5).toISOString(), quota:8, is_open:true, members_only:true, success_message:DEFAULT_SUCCESS, created_at:new Date().toISOString()},
+    {id:'d2',slug:'latte99',title:'拉花小聚（已結束）',description:'上一場的拉花練習聚會。',
+      event_date:new Date(Date.now()-3*864e5).toISOString(), quota:6, is_open:false, members_only:true, success_message:DEFAULT_SUCCESS, created_at:new Date(Date.now()-10*864e5).toISOString()},
+  ];
+  const regs=[
+    {id:'r1',event_id:'d1',name:'王小明',phone:'0912-000-111',created_at:new Date().toISOString()},
+    {id:'r2',event_id:'d1',name:'林美美',phone:'0922-000-222',created_at:new Date().toISOString()},
+  ];
+  const find=s=>events.find(e=>e.slug===s);
+  const cnt=id=>regs.filter(r=>r.event_id===id).length;
+  const isMember=ident=>{ const s=(ident||'').trim(), d=digits(ident);
+    return members.find(m=>m.active&&((m.code&&m.code===s)||(d&&digits(m.phone)===d))); };
+  return {
+    demo:true,
+    async getEvent(slug){ const e=find(slug); if(!e) return {not_found:true};
+      return {title:e.title,description:e.description,event_date:e.event_date,is_open:e.is_open,
+        members_only:e.members_only!==false, success_message:e.success_message||DEFAULT_SUCCESS,
+        expired:e.event_date&&new Date()>new Date(e.event_date),
+        available:Math.max(e.quota-cnt(e.id),0)>0}; },
+    async verifyMember(ident){ return {ok:!!isMember(ident)}; },
+    async register(slug,ident,name,phone){ const e=find(slug); if(!e) return {ok:false,reason:'not_found'};
+      if(!e.is_open||(e.event_date&&new Date()>new Date(e.event_date))) return {ok:false,reason:'closed'};
+      let storeName=name;
+      if(e.members_only!==false){ const m=isMember(ident); if(!m) return {ok:false,reason:'not_member'}; storeName=m.name; }
+      else if(!name) return {ok:false,reason:'invalid'};
+      const d=digits(phone);
+      if(d && regs.some(r=>r.event_id===e.id && digits(r.phone)===d)) return {ok:false,reason:'duplicate'};
+      if(cnt(e.id)>=e.quota) return {ok:false,reason:'full'};
+      regs.push({id:'r'+Date.now(),event_id:e.id,name:storeName,phone,created_at:new Date().toISOString()});
+      return {ok:true}; },
+    async signIn(){}, async signOut(){}, async session(){ return {demo:true}; },
+    async listEvents(){ return events.slice().reverse().map(e=>({...e,registered:cnt(e.id)})); },
+    async createEvent(ev){ const e={id:'d'+Date.now(),slug:Math.random().toString(36).slice(2,10),
+      is_open:true,created_at:new Date().toISOString(),...ev}; events.push(e); return e; },
+    async setOpen(id,open){ const e=events.find(x=>x.id===id); if(e)e.is_open=open; },
+    async listRegs(eventId){ return regs.filter(r=>r.event_id===eventId); },
+    async listMembers(){ return members.slice(); },
+    async addMember(mem){ const m={id:'m'+Date.now(), member_code:null, active:true, ...mem}; members.unshift(m); return m; },
+    async setMemberActive(id,active){ const m=members.find(x=>String(x.id)===String(id)); if(m)m.active=active; },
+    async deleteMember(id){ const i=members.findIndex(x=>String(x.id)===String(id)); if(i>=0)members.splice(i,1); },
+  };
+}
+
+// ============================================================
+// 小工具
+// ============================================================
+const app=document.getElementById('app');
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate=d=>d?new Date(d).toLocaleString('zh-TW',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'}):'時間未定';
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800); }
+function regLink(slug){ return location.origin+location.pathname+'?e='+slug; }
+
+// ============================================================
+// 客人報名頁
+// ============================================================
+async function renderRegister(slug){
+  app.innerHTML=`<div class="brand">${esc(CONFIG.CAFE_NAME)}</div><div class="card">載入中…</div>`;
+  const info=await backend.getEvent(slug);
+  const card=app.querySelector('.card');
+
+  if(!info || info.not_found){
+    card.innerHTML=`<div class="state"><div class="icon">🔍</div><h2>找不到這個活動</h2>
+      <p>連結可能不正確，或活動已被移除。</p></div>`; return; }
+
+  if(!info.is_open || info.expired || !info.available){
+    card.innerHTML=`<span class="pill closed">已關閉</span>
+      <h1 style="margin-top:12px">${esc(info.title)}</h1>
+      <div class="date">🗓 ${esc(fmtDate(info.event_date))}</div>
+      <div class="state"><div class="icon">☕</div><h2>報名已關閉</h2>
+      <p>這場活動的報名已結束，感謝關注，敬請期待下次活動！</p></div>`; return; }
+
+  const mo=info.members_only;
+  card.innerHTML=`
+    <h1>${esc(info.title)}</h1>
+    <div class="date">🗓 ${esc(fmtDate(info.event_date))}</div>
+    ${info.description?`<p class="desc">${esc(info.description)}</p>`:''}
+    <div class="statusbar">
+      <span class="pill go">開放報名中</span>
+      ${mo?'<span class="pill">限會員</span>':''}
+    </div>
+    ${mo?`<label for="p">會員手機號碼</label>
+        <input id="p" placeholder="輸入你的會員手機號碼" inputmode="tel" autocomplete="tel">
+        <div class="mchk" id="mchk"></div>`
+       :`<label for="n">姓名</label><input id="n" placeholder="怎麼稱呼你？" autocomplete="name">
+        <label for="p">聯絡電話</label><input id="p" placeholder="0912-345-678" inputmode="tel" autocomplete="tel">`}
+    <div class="err" id="err"></div>
+    <button class="btn" id="go">送出報名</button>`;
+
+  const err=card.querySelector('#err'), btn=card.querySelector('#go');
+
+  if(mo){
+    const p=card.querySelector('#p'), mchk=card.querySelector('#mchk');
+    p.addEventListener('blur', async()=>{
+      const v=p.value.trim();
+      if(!v){ mchk.textContent=''; mchk.className='mchk'; return; }
+      const r=await backend.verifyMember(v);
+      if(r.ok){ mchk.textContent='✓ 會員資格確認'; mchk.className='mchk ok'; }
+      else{ mchk.textContent='查無會員資料，此活動僅限會員報名'; mchk.className='mchk no'; }
+    });
+  }
+
+  function handleResult(r){
+    if(r.ok){
+      card.innerHTML=`<div class="state"><div class="icon">🎉</div><h2>報名成功！</h2>
+        <p>${esc(info.success_message||DEFAULT_SUCCESS)}</p>
+        <div class="pill" style="margin-top:14px">${esc(info.title)}</div></div>`;
+    }else{
+      const map={full:'太可惜，就在剛剛名額被搶完了 😢', closed:'這場活動已經關閉了。',
+        not_found:'找不到活動。', invalid:'資料不完整，請再檢查。',
+        not_member:'查無會員資料，此活動僅限會員報名。',
+        duplicate:'這支手機已經報名過這場活動囉，一位會員一個名額。'};
+      err.textContent=map[r.reason]||'報名失敗，請稍後再試。';
+      btn.disabled=false; btn.textContent='再試一次';
+      if(r.reason==='full') setTimeout(()=>renderRegister(slug),1200);
+    }
+  }
+
+  btn.onclick=async()=>{
+    err.textContent='';
+    const phone=card.querySelector('#p').value.trim();
+    try{
+      if(mo){
+        if(!phone){ err.textContent='請輸入你的會員手機號碼。'; return; }
+        btn.disabled=true; btn.textContent='確認中…';
+        const v=await backend.verifyMember(phone);
+        if(!v.ok){ err.textContent='查無會員資料，此活動僅限會員報名。'; btn.disabled=false; btn.textContent='再試一次'; return; }
+        btn.textContent='報名中…';
+        const r=await backend.register(slug, phone, '', phone);
+        handleResult(r);
+      }else{
+        const name=card.querySelector('#n').value.trim();
+        if(!name||!phone){ err.textContent='請填寫姓名和電話。'; return; }
+        btn.disabled=true; btn.textContent='報名中…';
+        const r=await backend.register(slug, '', name, phone);
+        handleResult(r);
+      }
+    }catch(e){ err.textContent='連線出問題，請稍後再試。'; btn.disabled=false; btn.textContent='再試一次'; }
+  };
+}
+
+// ============================================================
+// 後台
+// ============================================================
+async function renderAdmin(){
+  const sess=await backend.session();
+  if(!sess){ return renderLogin(); }
+  app.innerHTML=`<div class="brand">${esc(CONFIG.CAFE_NAME)}・後台</div>
+    ${backend.demo?'<div class="banner">🔧 示範模式：資料存在瀏覽器記憶體，重新整理會還原。設定好 Supabase 後即為正式資料。</div>':''}
+    <div class="tabs2">
+      <button class="t2 on" data-t="events">活動</button>
+      <button class="t2" data-t="members">會員</button>
+    </div>
+    <div id="panel"></div>
+    ${backend.demo?'':'<button class="btn ghost" id="out" style="margin-top:16px">登出</button>'}`;
+  const out=app.querySelector('#out'); if(out) out.onclick=async()=>{ await backend.signOut(); renderLogin(); };
+  const tabs=app.querySelectorAll('.t2');
+  tabs.forEach(b=> b.onclick=()=>{ tabs.forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    if(b.dataset.t==='events') renderEventsPanel(); else renderMembersPanel(); });
+  renderEventsPanel();
+}
+
+function renderEventsPanel(){
+  const panel=app.querySelector('#panel');
+  panel.innerHTML=`
+    <div class="card">
+      <h1 style="font-size:20px">建立新活動</h1>
+      <label for="t">活動名稱</label><input id="t" placeholder="例：週末手沖咖啡體驗課">
+      <div class="row">
+        <div><label for="d">活動時間</label><input id="d" type="datetime-local"></div>
+        <div><label for="q">名額</label><input id="q" type="number" min="1" value="10"></div>
+      </div>
+      <label for="ds">活動說明</label><textarea id="ds" placeholder="時間、地點、費用、注意事項…"></textarea>
+      <label for="sm">報名成功顯示文字（客人送出後看到，可每場不同）</label>
+      <textarea id="sm">已完成該次會員活動報名，請留意 LINE 訊息以確認資訊。</textarea>
+      <label class="chk"><input type="checkbox" id="mo" checked> 限會員報名（客人需通過手機驗證）</label>
+      <button class="btn" id="create">建立並產生報名連結</button>
+      <div class="err" id="cerr"></div>
+    </div>
+    <div id="list"></div>`;
+  app.querySelector('#create').onclick=createEvent;
+  refreshList();
+}
+
+async function renderMembersPanel(){
+  const panel=app.querySelector('#panel');
+  panel.innerHTML=`
+    <div class="card">
+      <h1 style="font-size:20px">新增會員</h1>
+      <div class="row">
+        <div><label for="mn">姓名</label><input id="mn" placeholder="會員姓名"></div>
+        <div><label for="mp">手機號碼</label><input id="mp" placeholder="0912-345-678" inputmode="tel"></div>
+      </div>
+      <button class="btn" id="addm">新增會員</button>
+      <div class="err" id="merr"></div>
+    </div>
+    <div class="listhead"><h2>會員名單</h2></div>
+    <input id="msearch" placeholder="🔍 搜尋姓名或手機">
+    <div id="mlist" style="margin-top:8px">載入中…</div>`;
+  const members=await backend.listMembers();
+  const norm=x=>String(x||'').replace(/[^0-9]/g,'');
+  const draw=(kw)=>{
+    kw=(kw||'').trim(); const kd=norm(kw);
+    const rows=members.filter(m=> !kw || (m.name&&m.name.includes(kw)) || (kd&&norm(m.phone).includes(kd)));
+    const box=panel.querySelector('#mlist');
+    if(!rows.length){ box.innerHTML='<p style="color:var(--muted)">找不到會員</p>'; return; }
+    box.innerHTML=rows.map(m=>`<div class="mrow ${m.active?'':'off'}" data-id="${m.id}">
+        <div><div class="mname">${esc(m.name)}${m.active?'':' <span class="pill closed" style="font-size:11px">停用</span>'}</div>
+          <div class="mph">${esc(m.phone||'')}</div></div>
+        <div class="mact"><button data-a="tg">${m.active?'停用':'啟用'}</button><button data-a="del">刪除</button></div>
+      </div>`).join('');
+    box.querySelectorAll('.mrow').forEach(row=>{
+      const m=members.find(x=>String(x.id)===String(row.dataset.id));
+      row.querySelector('[data-a="tg"]').onclick=async()=>{ await backend.setMemberActive(m.id,!m.active); m.active=!m.active; draw(panel.querySelector('#msearch').value); };
+      row.querySelector('[data-a="del"]').onclick=async()=>{ if(!confirm('確定刪除「'+m.name+'」？'))return; await backend.deleteMember(m.id); const i=members.indexOf(m); if(i>=0)members.splice(i,1); draw(panel.querySelector('#msearch').value); };
+    });
+  };
+  draw('');
+  panel.querySelector('#msearch').oninput=e=>draw(e.target.value);
+  panel.querySelector('#addm').onclick=async()=>{
+    const name=panel.querySelector('#mn').value.trim();
+    const phone=panel.querySelector('#mp').value.trim();
+    const err=panel.querySelector('#merr'); err.textContent='';
+    if(!name||!phone){ err.textContent='請填姓名和手機。'; return; }
+    if(members.some(m=>norm(m.phone)===norm(phone))){ err.textContent='這支手機已經是會員了。'; return; }
+    try{ const nm=await backend.addMember({name,phone}); members.unshift(nm);
+      panel.querySelector('#mn').value=''; panel.querySelector('#mp').value=''; toast('已新增會員'); draw(panel.querySelector('#msearch').value); }
+    catch(e){ err.textContent='新增失敗，請稍後再試。'; }
+  };
+}
+
+function renderLogin(){
+  app.innerHTML=`<div class="brand">${esc(CONFIG.CAFE_NAME)}・後台</div>
+    <div class="card"><h1 style="font-size:20px">管理者登入</h1>
+    <label for="em">Email</label><input id="em" type="email" autocomplete="username">
+    <label for="pw">密碼</label><input id="pw" type="password" autocomplete="current-password">
+    <div class="err" id="lerr"></div>
+    <button class="btn" id="login">登入</button></div>`;
+  app.querySelector('#login').onclick=async()=>{
+    try{ await backend.signIn(app.querySelector('#em').value, app.querySelector('#pw').value); renderAdmin(); }
+    catch(e){ app.querySelector('#lerr').textContent='登入失敗，請確認帳號密碼。'; }
+  };
+}
+
+async function createEvent(){
+  const title=app.querySelector('#t').value.trim();
+  const date=app.querySelector('#d').value;
+  const quota=parseInt(app.querySelector('#q').value,10);
+  const desc=app.querySelector('#ds').value.trim();
+  const members_only=app.querySelector('#mo').checked;
+  const success_message=app.querySelector('#sm').value.trim() || DEFAULT_SUCCESS;
+  const err=app.querySelector('#cerr'); err.textContent='';
+  if(!title||!quota||quota<1){ err.textContent='請填活動名稱和正確的名額。'; return; }
+  try{
+    const ev=await backend.createEvent({title,description:desc,
+      event_date:date?new Date(date).toISOString():null, quota, members_only, success_message});
+    toast('活動建立完成');
+    app.querySelector('#t').value=''; app.querySelector('#ds').value=''; app.querySelector('#d').value='';
+    await refreshList();
+    navigator.clipboard?.writeText(regLink(ev.slug)).then(()=>toast('報名連結已複製'));
+  }catch(e){ err.textContent='建立失敗，請稍後再試。'; }
+}
+
+let adminEvents=[]; let adminFilter='all';
+
+async function refreshList(){
+  const box=app.querySelector('#list');
+  box.innerHTML='<p style="color:var(--muted);margin-top:20px">載入活動中…</p>';
+  adminEvents=await backend.listEvents();
+  renderTable();
+}
+
+function renderTable(){
+  const box=app.querySelector('#list');
+  const tabs=`<div class="filters">
+      <button class="ftab ${adminFilter==='all'?'on':''}" data-f="all">全部</button>
+      <button class="ftab ${adminFilter==='open'?'on':''}" data-f="open">報名中</button>
+      <button class="ftab ${adminFilter==='closed'?'on':''}" data-f="closed">已關閉</button>
+    </div>`;
+  if(!adminEvents.length){
+    box.innerHTML='<div class="listhead"><h2>活動總覽</h2></div><p style="color:var(--muted)">還沒有活動，建立第一場吧。</p>';
+    return;
+  }
+  const rows=adminEvents.filter(e=> adminFilter==='all'?true : adminFilter==='open'? e.is_open : !e.is_open);
+  const body = rows.length ? rows.map(rowHtml).join('')
+    : '<tr><td colspan="4" class="empty">此分類目前沒有活動</td></tr>';
+  box.innerHTML=`
+    <div class="listhead"><h2>活動總覽</h2>${tabs}</div>
+    <table class="tbl">
+      <thead><tr><th>活動</th><th style="text-align:center">報名</th><th style="text-align:center">狀態</th><th></th></tr></thead>
+      <tbody>${body}</tbody>
+    </table>`;
+  box.querySelectorAll('.ftab').forEach(b=> b.onclick=()=>{ adminFilter=b.dataset.f; renderTable(); });
+  rows.forEach(e=> attachRow(box, e));
+}
+
+function rowHtml(e){
+  const status = e.is_open ? '<span class="pill go">報名中</span>' : '<span class="pill closed">已關閉</span>';
+  return `<tr class="srow" data-id="${e.id}">
+      <td><div class="ename">${esc(e.title)}</div><div class="etime">🗓 ${esc(fmtDate(e.event_date))}</div></td>
+      <td class="cnum">${e.registered}/${e.quota}</td>
+      <td class="cstat">${status}</td>
+      <td class="ccaret"><span class="caret">▸</span></td>
+    </tr>
+    <tr class="drow" data-id="${e.id}" hidden><td colspan="4"><div class="detail"></div></td></tr>`;
+}
+
+function attachRow(box, e){
+  const srow=box.querySelector('.srow[data-id="'+e.id+'"]');
+  const drow=box.querySelector('.drow[data-id="'+e.id+'"]');
+  const detail=drow.querySelector('.detail');
+  let built=false;
+  srow.onclick=async()=>{
+    const show=drow.hidden; drow.hidden=!show; srow.classList.toggle('open', show);
+    if(show && !built){ built=true; await buildDetail(detail, e); }
+  };
+}
+
+async function buildDetail(detail, e){
+  const link=regLink(e.slug), date=fmtDate(e.event_date);
+  detail.innerHTML=`
+    <div class="dacts">
+      <button class="mini2" data-a="toggle">${e.is_open?'關閉報名':'重新開啟'}</button>
+      <button class="mini2 ghost" data-a="copy">複製報名連結</button>
+      <button class="mini2 ghost" data-a="msg">訊息模板</button>
+    </div>
+    <div class="msg" hidden>
+      <div class="msg-label">📣 報名邀請訊息（貼到 LINE 揪團用）</div>
+      <textarea class="invite"></textarea>
+      <button class="mini" data-a="copy-invite">複製邀請訊息</button>
+      <div class="msg-label" style="margin-top:16px">✅ 報名成功通知（用 {姓名} 代入，每位會員各發一則）</div>
+      <textarea class="tmpl"></textarea>
+    </div>
+    <div class="dn-title">報名名單（${e.registered} 人）</div>
+    <div class="names">載入中…</div>`;
+
+  detail.querySelector('.invite').value =
+    `【HAMONDE 活動報名】${e.title}\n🗓 ${date}\n名額有限，手刀報名 👉 ${link}`;
+  detail.querySelector('.tmpl').value =
+    `{姓名} 您好，您已成功報名「${e.title}」🎉\n🗓 ${date}\n名額已為您保留，屆時見！\n— HAMONDE CAFE 愛蒙娣咖啡`;
+
+  detail.querySelector('[data-a="toggle"]').onclick=async()=>{
+    await backend.setOpen(e.id, !e.is_open); e.is_open=!e.is_open; renderTable();
+  };
+  detail.querySelector('[data-a="copy"]').onclick=()=>{ navigator.clipboard?.writeText(link); toast('已複製報名連結'); };
+  detail.querySelector('[data-a="msg"]').onclick=()=>{ const m=detail.querySelector('.msg'); m.hidden=!m.hidden; };
+  detail.querySelector('[data-a="copy-invite"]').onclick=()=>{ navigator.clipboard?.writeText(detail.querySelector('.invite').value); toast('已複製邀請訊息'); };
+
+  const rs=await backend.listRegs(e.id);
+  const n=detail.querySelector('.names');
+  if(!rs.length){ n.innerHTML='<div style="color:var(--muted)">目前還沒有人報名</div>'; return; }
+  n.innerHTML=rs.map((r,i)=>`<div class="nrow"><span>${i+1}. ${esc(r.name)}　${esc(r.phone)}</span>
+    <button class="nbtn" data-i="${i}">複製通知</button></div>`).join('');
+  n.querySelectorAll('.nbtn').forEach((b,i)=>{ b.onclick=()=>{
+    const msg=detail.querySelector('.tmpl').value.replace(/{姓名}/g, rs[i].name);
+    navigator.clipboard?.writeText(msg); toast('已複製給 '+rs[i].name+' 的通知');
+  };});
+}
+
+// ============================================================
+// 進入點
+// ============================================================
+(function init(){
+  backend = CONFIG.DEMO_MODE ? makeDemoBackend() : makeSupabaseBackend();
+  const p=new URLSearchParams(location.search);
+  if(p.has('e')) renderRegister(p.get('e'));
+  else if(p.has('admin')) renderAdmin();
+  else{
+    app.innerHTML=`<div class="brand">${esc(CONFIG.CAFE_NAME)}</div>
+    <div class="card"><h1>活動報名系統</h1>
+    <p class="desc">這是後台入口。建立活動後複製連結分享給客人。</p>
+    <a class="btn ghost" href="?admin" style="display:block;text-align:center;text-decoration:none">進入後台</a>
+    <a class="btn" href="?e=coffee01" style="display:block;text-align:center;text-decoration:none">看看範例報名頁</a></div>`;
+  }
+})();
+</script>
+</body>
+</html>

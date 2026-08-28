@@ -1,0 +1,9 @@
+# 個資：客戶名單絕對不要上傳到公開 repo
+members.csv
+會員.xlsx
+*.xlsx
+*.csv
+
+# 本機工具設定
+.claude/
+.DS_Store
