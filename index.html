@@ -106,6 +106,22 @@
   .mini2{font-size:13px; padding:9px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; cursor:pointer; font-weight:600}
   .mini2.ghost{background:#fff; color:var(--accent-ink); border:1px solid var(--line); font-weight:500}
   .dn-title{font-size:12px; color:var(--muted); margin:14px 0 6px}
+  .danger{margin-top:18px; padding-top:14px; border-top:1px dashed #e7c3bd}
+  .dz-open{font-size:12px; padding:7px 12px; border-radius:9px; cursor:pointer;
+    border:1px solid #e7c3bd; background:transparent; color:#a6564b; opacity:.75}
+  .dz-open:hover{opacity:1; background:#fdf3f1}
+  .dz-confirm{margin-top:12px; padding:14px; border:1px solid #e7c3bd;
+    border-radius:12px; background:#fdf3f1}
+  .dz-warn{font-size:13px; line-height:1.6; color:#8c4034}
+  .dz-label{display:block; font-size:12px; color:#8c4034; margin:12px 0 6px}
+  .dz-input{width:100%; font:inherit; font-size:14px; padding:9px 12px; border-radius:10px;
+    border:1px solid #e7c3bd; background:#fff}
+  .dz-btns{display:flex; gap:8px; margin-top:10px}
+  .dz-cancel{font-size:13px; padding:9px 14px; border-radius:10px; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--ink)}
+  .dz-go{font-size:13px; font-weight:600; padding:9px 14px; border-radius:10px;
+    border:none; background:var(--stop); color:#fff; cursor:pointer}
+  .dz-go:disabled{background:#d8c4c0; cursor:not-allowed}
   .empty{text-align:center; color:var(--muted); padding:20px!important}
   .tabs2{display:flex; gap:8px; margin-bottom:16px}
   .t2{font-size:14px; font-weight:600; padding:9px 18px; border-radius:11px; border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer}
@@ -168,6 +184,9 @@ function makeSupabaseBackend(){
     async createEvent(ev){ const {data,error}=await sb.from('events').insert(ev).select().single();
       if(error) throw error; return data; },
     async setOpen(id,open){ await sb.from('events').update({is_open:open}).eq('id',id); },
+    async deleteEvent(id){ const {data,error}=await sb.from('events').delete().eq('id',id).select();
+      if(error) throw error;
+      if(!data||!data.length) throw new Error('沒有刪除任何資料，請確認登入狀態與權限。'); },
     async listRegs(eventId){ const {data}=await sb.from('registrations').select('*')
       .eq('event_id',eventId).order('created_at'); return data||[]; },
     async listMembers(){ const {data}=await sb.from('members').select('*').order('created_at',{ascending:false}); return data||[]; },
@@ -222,6 +241,8 @@ function makeDemoBackend(){
     async createEvent(ev){ const e={id:'d'+Date.now(),slug:Math.random().toString(36).slice(2,10),
       is_open:true,created_at:new Date().toISOString(),...ev}; events.push(e); return e; },
     async setOpen(id,open){ const e=events.find(x=>x.id===id); if(e)e.is_open=open; },
+    async deleteEvent(id){ const i=events.findIndex(x=>x.id===id); if(i>=0)events.splice(i,1);
+      for(let j=regs.length-1;j>=0;j--) if(regs[j].event_id===id) regs.splice(j,1); },
     async listRegs(eventId){ return regs.filter(r=>r.event_id===eventId); },
     async listMembers(){ return members.slice(); },
     async addMember(mem){ const m={id:'m'+Date.now(), member_code:null, active:true, ...mem}; members.unshift(m); return m; },
@@ -525,7 +546,21 @@ async function buildDetail(detail, e){
       <textarea class="tmpl"></textarea>
     </div>
     <div class="dn-title">報名名單（${e.registered} 人）</div>
-    <div class="names">載入中…</div>`;
+    <div class="names">載入中…</div>
+    <div class="danger">
+      <button class="dz-open">🗑 刪除這場活動</button>
+      <div class="dz-confirm" hidden>
+        <div class="dz-warn">即將永久刪除「<b>${esc(e.title)}</b>」，
+          連同底下 <b>${e.registered}</b> 筆報名紀錄一併移除。此動作<b>無法復原</b>。</div>
+        <label class="dz-label">確定的話，請在下面輸入「刪除」兩個字</label>
+        <input class="dz-input" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="刪除">
+        <div class="dz-btns">
+          <button class="dz-cancel">取消</button>
+          <button class="dz-go" disabled>永久刪除</button>
+        </div>
+        <div class="err dz-err"></div>
+      </div>
+    </div>`;
 
   detail.querySelector('.invite').value =
     `【HAMONDE 活動報名】${e.title}\n🗓 ${date}\n名額有限，手刀報名 👉 ${link}`;
@@ -538,6 +573,21 @@ async function buildDetail(detail, e){
   detail.querySelector('[data-a="copy"]').onclick=()=>{ navigator.clipboard?.writeText(link); toast('已複製報名連結'); };
   detail.querySelector('[data-a="msg"]').onclick=()=>{ const m=detail.querySelector('.msg'); m.hidden=!m.hidden; };
   detail.querySelector('[data-a="copy-invite"]').onclick=()=>{ navigator.clipboard?.writeText(detail.querySelector('.invite').value); toast('已複製邀請訊息'); };
+
+  // 刪除活動：需展開確認區、輸入「刪除」解鎖，再經一次系統確認
+  const dz=detail.querySelector('.dz-confirm'), dzInput=detail.querySelector('.dz-input'),
+        dzGo=detail.querySelector('.dz-go'), dzErr=detail.querySelector('.dz-err');
+  const dzReset=()=>{ dz.hidden=true; dzInput.value=''; dzGo.disabled=true; dzErr.textContent=''; };
+  detail.querySelector('.dz-open').onclick=()=>{ if(dz.hidden){ dz.hidden=false; dzInput.focus(); } else dzReset(); };
+  detail.querySelector('.dz-cancel').onclick=dzReset;
+  dzInput.oninput=()=>{ dzGo.disabled = dzInput.value.trim()!=='刪除'; };
+  dzGo.onclick=async()=>{
+    if(dzInput.value.trim()!=='刪除') return;
+    if(!confirm('最後確認：永久刪除「'+e.title+'」及其報名紀錄？')) return;
+    dzGo.disabled=true; dzErr.textContent='';
+    try{ await backend.deleteEvent(e.id); toast('已刪除「'+e.title+'」'); await refreshList(); }
+    catch(err){ dzErr.textContent='刪除失敗：'+(err.message||'請稍後再試。'); dzGo.disabled=false; }
+  };
 
   const rs=await backend.listRegs(e.id);
   const n=detail.querySelector('.names');
