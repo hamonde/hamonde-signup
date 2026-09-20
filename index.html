@@ -6,26 +6,28 @@
 <title>HAMONDE 活動報名</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --ink:#2A211A; --paper:#F4ECDE; --card:#FFFDF9; --line:#E4D8C4;
     --muted:#8B7B67; --accent:#B5651D; --accent-ink:#7A4413;
-    --go:#3F7D53; --stop:#B23A2E;
+    --go:#3F7D53; --stop:#B23A2E; --brand2:#1D3557;
+    --font-head:"Fraunces";
     --shadow:0 1px 2px rgba(42,33,26,.06), 0 8px 24px rgba(42,33,26,.08);
   }
   *{box-sizing:border-box}
   body{margin:0; background:var(--paper); color:var(--ink);
     font-family:"Noto Sans TC",system-ui,sans-serif; line-height:1.6; -webkit-font-smoothing:antialiased}
   .wrap{max-width:640px; margin:0 auto; padding:24px 20px 64px}
-  .brand{font-family:"Fraunces",serif; font-weight:600; font-size:15px; letter-spacing:.02em;
-    color:var(--accent-ink); margin:8px 0 20px; display:flex; align-items:center; gap:8px}
-  .brand::before{content:""; width:22px; height:22px; border-radius:50%;
-    background:radial-gradient(circle at 35% 30%, #d99a2b, var(--accent)); display:inline-block}
+  .brand{font-family:var(--font-head),serif; font-weight:600; font-size:15px; letter-spacing:.02em;
+    color:var(--accent-ink); margin:8px 0 20px; display:flex; align-items:center; gap:10px}
+  .brand img{display:block; width:auto; mix-blend-mode:multiply}
+  .brand.hero{flex-direction:column; gap:12px; text-align:center; margin:4px 0 22px}
+  .brand.hero .bname{font-size:13px; letter-spacing:.14em; color:var(--muted)}
   .card{background:var(--card); border:1px solid var(--line); border-radius:18px;
     padding:24px; box-shadow:var(--shadow)}
-  h1{font-family:"Fraunces",serif; font-weight:600; font-size:26px; line-height:1.25; margin:0 0 6px}
+  h1{font-family:var(--font-head),serif; font-weight:600; font-size:26px; line-height:1.25; margin:0 0 6px}
   .date{color:var(--muted); font-size:14px; margin-bottom:16px}
   .desc{white-space:pre-wrap; margin:0 0 22px; color:#4a3d31}
   .statusbar{display:flex; gap:8px; align-items:center; padding:16px 0 18px;
@@ -34,7 +36,7 @@
     padding:6px 14px; border-radius:999px; background:#f3ead9; color:var(--accent-ink)}
   .pill.go{background:#e2f0e6; color:var(--go)}
   .pill.go::before{content:""; width:8px; height:8px; border-radius:50%; background:var(--go)}
-  .pill.closed{background:#f6dedb; color:var(--stop)}
+  .pill.closed{background:#e9e6e0; color:#7d786e}
   label{display:block; font-size:13px; color:var(--muted); margin:14px 0 6px}
   input,textarea{width:100%; font:inherit; color:var(--ink); background:#fff;
     border:1px solid var(--line); border-radius:12px; padding:12px 14px}
@@ -58,20 +60,20 @@
   .btn.ghost:hover{background:#f3ead9}
   .state{text-align:center; padding:14px 0}
   .state .icon{font-size:40px; margin-bottom:8px}
-  .state h2{font-family:"Fraunces",serif; font-size:22px; margin:0 0 8px}
+  .state h2{font-family:var(--font-head),serif; font-size:22px; margin:0 0 8px}
   .state p{color:var(--muted); margin:0}
   .banner{background:#fff5e2; border:1px solid #f0dcae; color:#7a5a12; font-size:13px;
     padding:10px 14px; border-radius:12px; margin-bottom:16px}
   .err{color:var(--stop); font-size:13px; margin-top:10px; min-height:18px}
   .row{display:flex; gap:10px; flex-wrap:wrap} .row > *{flex:1}
   .ev{border:1px solid var(--line); border-radius:14px; padding:16px; margin-top:14px; background:#fff}
-  .ev h3{margin:0 0 4px; font-size:17px; font-family:"Fraunces",serif; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .ev h3{margin:0 0 4px; font-size:17px; font-family:var(--font-head),serif; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
   .ev .meta{font-size:13px; color:var(--muted); margin-bottom:12px}
   .ev .acts{display:flex; gap:8px; flex-wrap:wrap}
   .ev .acts button{flex:0 0 auto; font-size:13px; padding:8px 12px; border-radius:10px;
     border:1px solid var(--line); background:#fff; cursor:pointer; color:var(--ink)}
   .ev .acts button:hover{background:#f3ead9}
-  .count{font-family:"Fraunces",serif; font-weight:600}
+  .count{font-family:var(--font-head),serif; font-weight:600}
   .names{margin-top:12px; font-size:13px; color:#4a3d31; border-top:1px dashed var(--line); padding-top:10px}
   .names div{padding:3px 0}
   .msg{margin-top:12px; border-top:1px dashed var(--line); padding-top:12px}
@@ -95,7 +97,7 @@
   .srow td{padding:12px 14px; vertical-align:middle; border-bottom:1px solid var(--line)}
   .ename{font-weight:700; font-size:14px; line-height:1.35}
   .etime{font-size:12px; color:var(--muted); margin-top:2px}
-  .cnum{text-align:center; font-family:"Fraunces",serif; font-weight:600; white-space:nowrap}
+  .cnum{text-align:center; font-family:var(--font-head),serif; font-weight:600; white-space:nowrap}
   .cstat{text-align:center}
   .ccaret{text-align:center; width:26px}
   .caret{display:inline-block; transition:transform .2s; color:var(--muted); font-size:12px}
@@ -106,6 +108,41 @@
   .mini2{font-size:13px; padding:9px 14px; border-radius:10px; border:none; background:var(--accent); color:#fff; cursor:pointer; font-weight:600}
   .mini2.ghost{background:#fff; color:var(--accent-ink); border:1px solid var(--line); font-weight:500}
   .dn-title{font-size:12px; color:var(--muted); margin:14px 0 6px}
+  /* 客人端：參與者資料 */
+  .prow{border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-top:10px; background:#fff}
+  .prowh{display:flex; justify-content:space-between; align-items:center;
+    font-size:13px; font-weight:600; color:var(--accent-ink)}
+  .pdel{width:28px; height:28px; border-radius:8px; cursor:pointer; font-size:13px;
+    border:1px solid var(--line); background:#fff; color:var(--stop)}
+  .pgrid{display:flex; flex-wrap:wrap; gap:10px; margin-top:4px}
+  .pf{flex:1 1 140px; min-width:0} .pf.wide{flex:1 1 100%}
+  .pf label{margin:8px 0 4px}
+  .addp{margin-top:10px; font:inherit; font-size:13px; padding:9px 14px; border-radius:10px;
+    border:1px dashed var(--line); background:transparent; color:var(--accent-ink); cursor:pointer; width:100%}
+  .addp:hover{background:rgba(0,0,0,.03)}
+
+  /* 後台：範本與品牌 */
+  .presets{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
+  .pst{flex:1 1 200px; text-align:left; font:inherit; cursor:pointer; padding:10px 12px;
+    border:1px solid var(--line); border-radius:12px; background:#fff; display:flex;
+    flex-direction:column; gap:2px; position:relative}
+  .pst:hover{border-color:var(--accent); background:#fdf6ea}
+  .pst.on{border-color:var(--accent); box-shadow:0 0 0 2px rgba(168,52,42,.15)}
+  .pstb{position:absolute; top:12px; right:12px; width:10px; height:10px; border-radius:50%}
+  .pstt{font-size:13px; font-weight:700}
+  .pstd{font-size:12px; color:var(--muted); line-height:1.4}
+  .pfpick{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
+  .pfchk{display:flex; align-items:center; gap:6px; font-size:13px; padding:7px 12px;
+    border:1px solid var(--line); border-radius:999px; background:#fff; cursor:pointer; margin:0}
+  .pfchk input{width:auto; margin:0}
+  .pfnote{font-size:12px; color:var(--muted); margin-top:8px}
+  .bdot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px;
+    vertical-align:middle}
+  .dmeta{font-size:12px; color:var(--muted); margin-bottom:12px}
+  .plist2{margin:2px 0 10px 16px; padding-left:12px; border-left:2px solid var(--line)}
+  .pline{font-size:13px; color:#4a3d31; padding:3px 0}
+  .paddr{font-size:12px; color:var(--muted)}
+
   /* 客人端：時段選擇 */
   .slotpick{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
   .slotbtn{font:inherit; font-size:14px; font-weight:600; padding:10px 16px; border-radius:11px;
@@ -141,13 +178,13 @@
     border-radius:10px; border:1px solid var(--line); background:#fff}
   .ss.full{background:#f6dedb; border-color:#e7c3bd; color:var(--stop)}
   .sst{font-weight:600}
-  .ssn{font-family:"Fraunces",serif; font-weight:600; color:var(--muted)}
+  .ssn{font-family:var(--font-head),serif; font-weight:600; color:var(--muted)}
   .ss.full .ssn{color:var(--stop)}
   .sgrp{margin-bottom:14px}
   .sgrph{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600;
     color:var(--accent-ink); padding:6px 0; border-bottom:1px solid var(--line); margin-bottom:4px}
   .sgrpe{font-size:13px; color:var(--muted); padding:4px 0}
-  .pty{font-family:"Fraunces",serif; color:var(--accent-ink); background:#f3ead9;
+  .pty{font-family:var(--font-head),serif; color:var(--accent-ink); background:#f3ead9;
     padding:1px 7px; border-radius:999px; font-size:12px}
 
   .danger{margin-top:18px; padding-top:14px; border-top:1px dashed #e7c3bd}
@@ -197,8 +234,53 @@ const CONFIG = {
   DEMO_MODE: false,
   SUPABASE_URL: 'https://hbduagmuevfzlypckouq.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_cLhra1M543iJgTPTzTTwhg_ZfqANPvS',
-  CAFE_NAME: 'HAMONDE CAFE 愛蒙娣咖啡',
+  CAFE_NAME: 'HAMONDE CAFE 愛蒙娣咖啡',   // 後台與預設頁面用
 };
+
+// ============================================================
+// 品牌：配色、LOGO、字體。要加第三個品牌就在這裡多一筆
+// ============================================================
+const BRANDS = {
+  hamonde: {
+    name:'HAMONDE CAFE 愛蒙娣咖啡',
+    logo:'assets/hamonde-logo.png', logoH:86, hero:true, logoHasName:true,
+    font:'"Fraunces"',
+    theme:{ ink:'#2A211A', paper:'#F4ECDE', card:'#FFFDF9', line:'#E4D8C4',
+            muted:'#8B7B67', accent:'#A8342A', 'accent-ink':'#7C241C',
+            go:'#3F7D53', stop:'#9C3328', brand2:'#1D3557' },
+  },
+  qiankun: {
+    name:'乾坤堂　QIAN KUN TANG',
+    logo:'assets/qiankun-logo.png', logoH:112, hero:true, logoHasName:true,
+    font:'"Noto Serif TC"',
+    theme:{ ink:'#1A1A1A', paper:'#F3F1EA', card:'#FFFFFF', line:'#DCD8CC',
+            muted:'#7A7568', accent:'#26426B', 'accent-ink':'#172E4D',
+            go:'#4A6B52', stop:'#9C3328', brand2:'#B08D57' },
+  },
+};
+const DEFAULT_BRAND='hamonde';
+
+function brandOf(key){ return BRANDS[key] || BRANDS[DEFAULT_BRAND]; }
+
+// 套用品牌：替換 CSS 變數即可，版型完全不用動
+function applyBrand(key){
+  const b=brandOf(key), root=document.documentElement;
+  Object.entries(b.theme).forEach(([k,v])=> root.style.setProperty('--'+k, v));
+  root.style.setProperty('--font-head', b.font);
+  document.title=b.name.split('　')[0]+' 活動報名';
+  return b;
+}
+
+// 品牌標頭（hero＝直式大 LOGO，用於書法字這類高比例圖）
+function brandHeader(key){
+  const b=brandOf(key);
+  // LOGO 本身已含品牌名時就不再重複一行文字
+  const label=b.logoHasName?'':`<span class="bname">${esc(b.name)}</span>`;
+  return b.hero
+    ? `<div class="brand hero"><img src="${b.logo}" alt="${esc(b.name)}" style="height:${b.logoH}px">${label}</div>`
+    : `<div class="brand"><img src="${b.logo}" alt="${esc(b.name)}" style="height:${b.logoH}px">
+       <span>${esc(b.name)}</span></div>`;
+}
 
 const DEFAULT_SUCCESS = '已完成該次會員活動報名，請留意 LINE 訊息以確認資訊。';
 
@@ -216,9 +298,10 @@ function makeSupabaseBackend(){
     demo:false,
     async getEvent(slug){ const {data}=await sb.rpc('get_event',{p_slug:slug}); return data; },
     async verifyMember(ident){ const {data}=await sb.rpc('verify_member',{p_ident:ident}); return data||{ok:false}; },
-    async register(slug,ident,name,phone,slotId,party){ const {data,error}=await sb.rpc('register_for_event',
+    async register(slug,ident,name,phone,slotId,party,parts){ const {data,error}=await sb.rpc('register_for_event',
       {p_slug:slug,p_ident:ident,p_name:name,p_phone:phone,
-       p_slot_id:slotId||null,p_party:party||1}); if(error) throw error; return data; },
+       p_slot_id:slotId||null,p_party:party||1,
+       p_participants:(parts&&parts.length)?parts:null}); if(error) throw error; return data; },
     async signIn(email,pw){ const {error}=await sb.auth.signInWithPassword({email,password:pw}); if(error) throw error; },
     async signOut(){ await sb.auth.signOut(); },
     async session(){ const {data}=await sb.auth.getSession(); return data.session; },
@@ -246,8 +329,10 @@ function makeSupabaseBackend(){
     async deleteEvent(id){ const {data,error}=await sb.from('events').delete().eq('id',id).select();
       if(error) throw error;
       if(!data||!data.length) throw new Error('沒有刪除任何資料，請確認登入狀態與權限。'); },
-    async listRegs(eventId){ const {data}=await sb.from('registrations').select('*')
-      .eq('event_id',eventId).order('created_at'); return data||[]; },
+    async listRegs(eventId){ const {data}=await sb.from('registrations')
+      .select('*, participants(*)').eq('event_id',eventId).order('created_at');
+      return (data||[]).map(r=>({...r,
+        participants:(r.participants||[]).sort((a,b)=>a.sort-b.sort)})); },
     async listSlots(eventId){ const {data}=await sb.from('event_slots').select('*')
       .eq('event_id',eventId).order('sort').order('starts_at'); return data||[]; },
     async listMembers(){ const {data}=await sb.from('members').select('*').order('created_at',{ascending:false}); return data||[]; },
@@ -273,6 +358,20 @@ function makeDemoBackend(){
   ];
   const day=new Date(Date.now()+10*864e5); day.setHours(0,0,0,0);
   const at=(h,m)=>{const d=new Date(day); d.setHours(h,m,0,0); return d.toISOString();};
+  const lecDay=new Date(Date.now()+14*864e5); lecDay.setHours(19,30,0,0);
+  events.push({id:'d4',slug:'lecture1',title:'乾坤堂　秋季講堂',
+    description:'本期主題：安身立命與日常修持。\n地點：乾坤堂二樓講堂。',
+    event_date:lecDay.toISOString(), quota:40, is_open:true, members_only:false,
+    brand:'qiankun', has_slots:false, allow_party:false, max_party:1,
+    participant_fields:['name','gender'],
+    success_message:'已完成報名，講堂席位已為您保留，感謝您的參與。',
+    created_at:new Date().toISOString()});
+  events.push({id:'d5',slug:'ritual9',title:'乾坤堂　祈福法會',
+    description:'需填寫完整參與者資料以製作疏文。',
+    event_date:new Date(Date.now()+21*864e5).toISOString(), quota:60, is_open:true, members_only:false,
+    brand:'qiankun', has_slots:false, allow_party:false, max_party:1,
+    participant_fields:['name','gender','birth_year','address'],
+    success_message:'已完成報名，感謝您的參與。', created_at:new Date().toISOString()});
   events.push({id:'d3',slug:'tasting7',title:'週末杯測體驗（分時段）',
     description:'每場約 40 分鐘，可攜伴同行。',
     event_date:day.toISOString(), quota:12, is_open:true, members_only:true,
@@ -302,19 +401,33 @@ function makeDemoBackend(){
       const end=e.event_date?new Date(new Date(e.event_date).getTime()+(e.has_slots?864e5:0)):null;
       return {title:e.title,description:e.description,event_date:e.event_date,is_open:e.is_open,
         members_only:e.members_only!==false, success_message:e.success_message||DEFAULT_SUCCESS,
+        brand:e.brand||DEFAULT_BRAND, participant_fields:e.participant_fields||[],
         has_slots:!!e.has_slots, allow_party:!!e.allow_party, max_party:Math.max(e.max_party||1,1),
         slots:sl,
         expired:!!(end&&new Date()>end),
         available:e.has_slots?(sl||[]).some(x=>x.available):Math.max(e.quota-cnt(e.id),0)>0}; },
     async verifyMember(ident){ return {ok:!!isMember(ident)}; },
-    async register(slug,ident,name,phone,slotId,party){ const e=find(slug); if(!e) return {ok:false,reason:'not_found'};
+    async register(slug,ident,name,phone,slotId,party,parts){ const e=find(slug); if(!e) return {ok:false,reason:'not_found'};
       const end=e.event_date?new Date(new Date(e.event_date).getTime()+(e.has_slots?864e5:0)):null;
       if(!e.is_open||(end&&new Date()>end)) return {ok:false,reason:'closed'};
-      let pt=Math.max(parseInt(party,10)||1,1);
-      if(!e.allow_party) pt=1;
-      if(pt>Math.max(e.max_party||1,1)) return {ok:false,reason:'party_too_big'};
+      const pflds=e.participant_fields||[];
+      const needP=pflds.length>0;
+      let pt;
+      if(needP){
+        if(!parts||!parts.length) return {ok:false,reason:'need_participants'};
+        for(const x of parts) for(const k of pflds){
+          if(k==='birth_year'){ if(!/^\d{1,3}$/.test(String(x.birth_year||''))) return {ok:false,reason:'invalid_participant'}; }
+          else if(!String(x[k]||'').trim()) return {ok:false,reason:'invalid_participant'};
+        }
+        pt=parts.length;
+      }else{
+        pt=Math.max(parseInt(party,10)||1,1);
+        if(!e.allow_party) pt=1;
+        if(pt>Math.max(e.max_party||1,1)) return {ok:false,reason:'party_too_big'};
+      }
       let storeName=name;
       if(e.members_only!==false){ const m=isMember(ident); if(!m) return {ok:false,reason:'not_member'}; storeName=m.name; }
+      else if(needP) storeName=String(parts[0].name||'').trim();
       else if(!name) return {ok:false,reason:'invalid'};
       const d=digits(phone);
       if(d && regs.some(r=>r.event_id===e.id && digits(r.phone)===d)) return {ok:false,reason:'duplicate'};
@@ -324,7 +437,8 @@ function makeDemoBackend(){
         if(scnt(sl.id)+pt>sl.quota) return {ok:false,reason:'full'};
       }else if(cnt(e.id)+pt>e.quota) return {ok:false,reason:'full'};
       regs.push({id:'r'+Date.now(),event_id:e.id,slot_id:e.has_slots?slotId:null,party_size:pt,
-        name:storeName,phone,created_at:new Date().toISOString()});
+        name:storeName,phone,created_at:new Date().toISOString(),
+        participants:needP?parts.map((x,i)=>({...x,sort:i})):[]});
       return {ok:true}; },
     async signIn(){}, async signOut(){}, async session(){ return {demo:true}; },
     async listEvents(){ return events.slice().reverse().map(e=>({...e, registered:cnt(e.id),
@@ -362,12 +476,42 @@ function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg
   setTimeout(()=>t.classList.remove('show'),1800); }
 function regLink(slug){ return location.origin+location.pathname+'?e='+slug; }
 
+// 可逐位收集的參與者欄位
+const PFIELDS={
+  name:      {label:'姓名',     ph:'參與者姓名'},
+  gender:    {label:'性別',     opts:['男','女','其他']},
+  birth_year:{label:'出生年次', ph:'民國年，例 75', tip:'民國年次'},
+  address:   {label:'居住地址', ph:'例：台中市西區…'},
+};
+
+// 產生一位參與者的輸入列
+function participantRow(fields, idx){
+  const f=k=>{
+    const d=PFIELDS[k];
+    if(k==='gender') return `<div class="pf"><label>${d.label}</label>
+      <select data-k="gender"><option value="">請選擇</option>
+      ${d.opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+    if(k==='birth_year') return `<div class="pf"><label>${d.label}</label>
+      <input data-k="birth_year" inputmode="numeric" maxlength="3" placeholder="${d.ph}"></div>`;
+    return `<div class="pf ${k==='address'?'wide':''}"><label>${d.label}</label>
+      <input data-k="${k}" placeholder="${d.ph}"></div>`;
+  };
+  return `<div class="prow" data-i="${idx}">
+    <div class="prowh"><span>參與者 ${idx+1}</span>
+      <button type="button" class="pdel" title="移除">✕</button></div>
+    <div class="pgrid">${fields.map(f).join('')}</div>
+  </div>`;
+}
+
 // ============================================================
 // 客人報名頁
 // ============================================================
 async function renderRegister(slug){
-  app.innerHTML=`<div class="brand">${esc(CONFIG.CAFE_NAME)}</div><div class="card">載入中…</div>`;
+  app.innerHTML=`<div class="brand"></div><div class="card">載入中…</div>`;
   const info=await backend.getEvent(slug);
+  const bkey=(info && info.brand) || DEFAULT_BRAND;
+  applyBrand(bkey);
+  app.innerHTML=brandHeader(bkey)+`<div class="card">載入中…</div>`;
   const card=app.querySelector('.card');
 
   if(!info || info.not_found){
@@ -383,7 +527,9 @@ async function renderRegister(slug){
 
   const mo=info.members_only;
   const slots=info.has_slots?(info.slots||[]):[];
-  const maxParty=info.allow_party?Math.max(info.max_party||1,1):1;
+  const pf=(info.participant_fields||[]).filter(k=>PFIELDS[k]);
+  const needP=pf.length>0;
+  const maxParty=(!needP&&info.allow_party)?Math.max(info.max_party||1,1):1;
   card.innerHTML=`
     <h1>${esc(info.title)}</h1>
     <div class="date">🗓 ${esc(fmtWhen(info))}</div>
@@ -400,7 +546,12 @@ async function renderRegister(slug){
     ${maxParty>1?`<label for="pt">參與人數</label>
       <select id="pt">${Array.from({length:maxParty},(_,i)=>
         `<option value="${i+1}">${i+1} 位${i?'（含同行者）':''}</option>`).join('')}</select>`:''}
-    ${mo?`<label for="p">會員手機號碼</label>
+    ${needP?`<label>參與者資料</label>
+      <div id="plist">${participantRow(pf,0)}</div>
+      <button type="button" class="addp" id="addp">＋ 新增一位參與者</button>
+      <label for="p" style="margin-top:18px">聯絡電話</label>
+      <input id="p" placeholder="0912-345-678" inputmode="tel" autocomplete="tel">`
+     :mo?`<label for="p">會員手機號碼</label>
         <input id="p" placeholder="輸入你的會員手機號碼" inputmode="tel" autocomplete="tel">
         <div class="mchk" id="mchk"></div>`
        :`<label for="n">姓名</label><input id="n" placeholder="怎麼稱呼你？" autocomplete="name">
@@ -420,7 +571,31 @@ async function renderRegister(slug){
     });
   }
 
-  if(mo){
+  const plist=card.querySelector('#plist');
+  const renumber=()=>{
+    [...plist.querySelectorAll('.prow')].forEach((r,i)=>{
+      r.dataset.i=i; r.querySelector('.prowh span').textContent='參與者 '+(i+1);
+      r.querySelector('.pdel').style.visibility = plist.querySelectorAll('.prow').length>1?'visible':'hidden';
+    });
+  };
+  const wireRow=row=>{ row.querySelector('.pdel').onclick=()=>{
+    if(plist.querySelectorAll('.prow').length<=1) return;
+    row.remove(); renumber(); }; };
+  if(needP){
+    plist.querySelectorAll('.prow').forEach(wireRow); renumber();
+    card.querySelector('#addp').onclick=()=>{
+      const n=plist.querySelectorAll('.prow').length;
+      plist.insertAdjacentHTML('beforeend', participantRow(pf,n));
+      wireRow(plist.lastElementChild); renumber();
+      plist.lastElementChild.querySelector('input,select')?.focus();
+    };
+  }
+
+  // 讀出參與者資料
+  const readParticipants=()=>[...plist.querySelectorAll('.prow')].map(r=>{
+    const o={}; r.querySelectorAll('[data-k]').forEach(el=>o[el.dataset.k]=el.value.trim()); return o; });
+
+  if(mo && card.querySelector('#mchk')){
     const p=card.querySelector('#p'), mchk=card.querySelector('#mchk');
     p.addEventListener('blur', async()=>{
       const v=p.value.trim();
@@ -434,7 +609,8 @@ async function renderRegister(slug){
   function handleResult(r){
     if(r.ok){
       const sl=slots.find(x=>x.id===pickedSlot);
-      const party=card.querySelector('#pt') ? parseInt(card.querySelector('#pt').value,10) : 1;
+      const party=needP ? plist.querySelectorAll('.prow').length
+                  : (card.querySelector('#pt') ? parseInt(card.querySelector('#pt').value,10) : 1);
       card.innerHTML=`<div class="state"><div class="icon">🎉</div><h2>報名成功！</h2>
         <p>${esc(info.success_message||DEFAULT_SUCCESS)}</p>
         <div class="pill" style="margin-top:14px">${esc(info.title)}</div>
@@ -447,6 +623,8 @@ async function renderRegister(slug){
         closed:'這場活動已經關閉了。',
         not_found:'找不到活動。', invalid:'資料不完整，請再檢查。',
         need_slot:'請先選擇一個時段。',
+        need_participants:'請至少填寫一位參與者的資料。',
+        invalid_participant:'參與者資料不完整，請檢查每一位的必填欄位。',
         party_too_big:'超過每組可報名的人數上限。',
         not_member:'查無會員資料，此活動僅限會員報名。',
         duplicate:'這支手機已經報名過這場活動囉，一場活動只能報名一個時段。'};
@@ -462,6 +640,21 @@ async function renderRegister(slug){
     const ptEl=card.querySelector('#pt');
     const party=ptEl?parseInt(ptEl.value,10)||1:1;
     if(info.has_slots && !pickedSlot){ err.textContent='請先選擇一個時段。'; return; }
+
+    let parts=null;
+    if(needP){
+      parts=readParticipants();
+      for(let i=0;i<parts.length;i++){
+        for(const k of pf){
+          if(k==='birth_year'){
+            const v=parts[i].birth_year;
+            if(!/^\d{1,3}$/.test(v)||+v<1||+v>200){
+              err.textContent=`參與者 ${i+1} 的出生年次請填民國年（例：75）。`; return; }
+          }else if(!parts[i][k]){
+            err.textContent=`請填寫參與者 ${i+1} 的${PFIELDS[k].label}。`; return; }
+        }
+      }
+    }
     try{
       if(mo){
         if(!phone){ err.textContent='請輸入你的會員手機號碼。'; return; }
@@ -469,13 +662,13 @@ async function renderRegister(slug){
         const v=await backend.verifyMember(phone);
         if(!v.ok){ err.textContent='查無會員資料，此活動僅限會員報名。'; btn.disabled=false; btn.textContent='再試一次'; return; }
         btn.textContent='報名中…';
-        const r=await backend.register(slug, phone, '', phone, pickedSlot, party);
+        const r=await backend.register(slug, phone, '', phone, pickedSlot, party, parts);
         handleResult(r);
       }else{
-        const name=card.querySelector('#n').value.trim();
-        if(!name||!phone){ err.textContent='請填寫姓名和電話。'; return; }
+        const name=needP?'':card.querySelector('#n').value.trim();
+        if(!phone||(!needP&&!name)){ err.textContent=needP?'請填寫聯絡電話。':'請填寫姓名和電話。'; return; }
         btn.disabled=true; btn.textContent='報名中…';
-        const r=await backend.register(slug, '', name, phone, pickedSlot, party);
+        const r=await backend.register(slug, '', name, phone, pickedSlot, party, parts);
         handleResult(r);
       }
     }catch(e){ err.textContent='連線出問題，請稍後再試。'; btn.disabled=false; btn.textContent='再試一次'; }
@@ -488,7 +681,7 @@ async function renderRegister(slug){
 async function renderAdmin(){
   const sess=await backend.session();
   if(!sess){ return renderLogin(); }
-  app.innerHTML=`<div class="brand">${esc(CONFIG.CAFE_NAME)}・後台</div>
+  app.innerHTML=`<div class="brand"><img src="${brandOf(DEFAULT_BRAND).logo}" alt="" style="height:26px"><span>${esc(CONFIG.CAFE_NAME)}・後台</span></div>
     ${backend.demo?'<div class="banner">🔧 示範模式：資料存在瀏覽器記憶體，重新整理會還原。設定好 Supabase 後即為正式資料。</div>':''}
     <div class="tabs2">
       <button class="t2 on" data-t="events">活動</button>
@@ -508,6 +701,15 @@ function renderEventsPanel(){
   panel.innerHTML=`
     <div class="card">
       <h1 style="font-size:20px">建立新活動</h1>
+      <label>活動類型（選一個範本，下面仍可個別調整）</label>
+      <div class="presets" id="presets">
+        ${Object.entries(PRESETS).map(([k,v])=>`<button type="button" class="pst" data-k="${k}">
+          <span class="pstb" style="background:${BRANDS[v.brand].theme.accent}"></span>
+          <span class="pstt">${esc(v.label)}</span><span class="pstd">${esc(v.hint)}</span></button>`).join('')}
+      </div>
+      <label for="br">品牌</label>
+      <select id="br">${Object.entries(BRANDS).map(([k,b])=>
+        `<option value="${k}">${esc(b.name)}</option>`).join('')}</select>
       <label for="t">活動名稱</label><input id="t" placeholder="例：週末手沖咖啡體驗課">
       <label class="chk"><input type="checkbox" id="hs"> 開放時段讓客人選（活動只顯示日期）</label>
       <div class="row" id="single">
@@ -535,10 +737,16 @@ function renderEventsPanel(){
       <label class="chk"><input type="checkbox" id="ap"> 可攜伴（客人能選參與人數）</label>
       <div id="partybox" hidden><label for="mp">每組人數上限</label>
         <input id="mp" type="number" min="2" max="20" value="4"></div>
+      <label style="margin-top:16px">要逐位收集的參與者資料</label>
+      <div class="pfpick" id="pfpick">
+        ${Object.entries(PFIELDS).map(([k,d])=>`<label class="pfchk">
+          <input type="checkbox" data-pf="${k}"${k==='name'?'':''}> ${esc(d.label)}</label>`).join('')}
+      </div>
+      <div class="pfnote" id="pfnote">不勾選＝只計算人數，不收集個別資料。</div>
+      <label class="chk" id="mobox"><input type="checkbox" id="mo" checked> 限會員報名（客人需通過手機驗證）</label>
       <label for="ds">活動說明</label><textarea id="ds" placeholder="時間、地點、費用、注意事項…"></textarea>
       <label for="sm">報名成功顯示文字（客人送出後看到，可每場不同）</label>
       <textarea id="sm">已完成該次會員活動報名，請留意 LINE 訊息以確認資訊。</textarea>
-      <label class="chk"><input type="checkbox" id="mo" checked> 限會員報名（客人需通過手機驗證）</label>
       <button class="btn" id="create">建立並產生報名連結</button>
       <div class="err" id="cerr"></div>
     </div>
@@ -596,7 +804,7 @@ async function renderMembersPanel(){
 }
 
 function renderLogin(){
-  app.innerHTML=`<div class="brand">${esc(CONFIG.CAFE_NAME)}・後台</div>
+  app.innerHTML=`<div class="brand"><img src="${brandOf(DEFAULT_BRAND).logo}" alt="" style="height:26px"><span>${esc(CONFIG.CAFE_NAME)}・後台</span></div>
     <div class="card"><h1 style="font-size:20px">管理者登入</h1>
     <label for="em">帳號</label>
     <div class="suffixed"><input id="em" type="text" autocomplete="username"
@@ -612,14 +820,70 @@ function renderLogin(){
   };
 }
 
+// 四種活動範本：一鍵設定好所有開關，之後仍可個別微調
+const PRESETS={
+  h_self:{ label:'HAMONDE・會員本人', hint:'指定時間，限會員本人，1 人',
+    brand:'hamonde', has_slots:false, allow_party:false, max_party:1,
+    members_only:true, fields:[] },
+  h_party:{ label:'HAMONDE・會員報名', hint:'客人選時段，可帶同行者',
+    brand:'hamonde', has_slots:true, allow_party:true, max_party:4,
+    members_only:true, fields:[] },
+  q_lecture:{ label:'乾坤堂・講堂報名', hint:'指定時間，收姓名與性別',
+    brand:'qiankun', has_slots:false, allow_party:false, max_party:1,
+    members_only:false, fields:['name','gender'] },
+  q_other:{ label:'乾坤堂・其他活動', hint:'指定時間，收完整參與者資料',
+    brand:'qiankun', has_slots:false, allow_party:false, max_party:1,
+    members_only:false, fields:['name','gender','birth_year','address'] },
+};
+
 // 建立活動表單：時段／攜伴的顯示切換與時段編輯器
 function wireEventForm(panel){
   const hs=panel.querySelector('#hs'), ap=panel.querySelector('#ap');
   const single=panel.querySelector('#single'), slotmode=panel.querySelector('#slotmode');
   const partybox=panel.querySelector('#partybox'), list=panel.querySelector('#slotlist');
 
+  const br=panel.querySelector('#br'), mobox=panel.querySelector('#mobox');
+  const mo=panel.querySelector('#mo'), pfnote=panel.querySelector('#pfnote');
+  const pfBoxes=[...panel.querySelectorAll('[data-pf]')];
+
+  // 乾坤堂沒有會員名單，也不沿用 HAMONDE 的：直接不給這個選項
+  const syncBrand=()=>{
+    const isH=br.value==='hamonde';
+    mobox.style.display=isH?'':'none';
+    if(!isH) mo.checked=false;
+  };
+  // 收逐位資料時，人數由參與者筆數決定，攜伴選項無意義
+  const syncFields=()=>{
+    const any=pfBoxes.some(b=>b.checked);
+    const nameBox=pfBoxes.find(b=>b.dataset.pf==='name');
+    if(any && !nameBox.checked) nameBox.checked=true;   // 姓名必收
+    panel.querySelector('.chk input#ap').closest('.chk').style.display=any?'none':'';
+    if(any){ ap.checked=false; partybox.hidden=true; }
+    pfnote.textContent=any
+      ? '客人可一次填寫多位參與者，報名人數＝實際填寫的筆數。'
+      : '不勾選＝只計算人數，不收集個別資料。';
+  };
+  br.onchange=syncBrand;
+  pfBoxes.forEach(b=> b.onchange=syncFields);
+
   hs.onchange=()=>{ single.hidden=hs.checked; slotmode.hidden=!hs.checked; };
   ap.onchange=()=>{ partybox.hidden=!ap.checked; };
+
+  // 範本
+  panel.querySelectorAll('.pst').forEach(b=> b.onclick=()=>{
+    const v=PRESETS[b.dataset.k];
+    panel.querySelectorAll('.pst').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    br.value=v.brand;
+    hs.checked=v.has_slots; single.hidden=v.has_slots; slotmode.hidden=!v.has_slots;
+    ap.checked=v.allow_party; partybox.hidden=!v.allow_party;
+    panel.querySelector('#mp').value=v.max_party;
+    mo.checked=v.members_only;
+    pfBoxes.forEach(x=> x.checked=v.fields.includes(x.dataset.pf));
+    syncBrand(); syncFields();
+    toast('已套用範本：'+v.label);
+  });
+  syncBrand(); syncFields();
 
   const drawSlots=()=>{
     const rows=[...list.querySelectorAll('.slotrow')];
@@ -681,7 +945,9 @@ async function createEvent(){
   const members_only=app.querySelector('#mo').checked;
   const success_message=app.querySelector('#sm').value.trim() || DEFAULT_SUCCESS;
   const has_slots=app.querySelector('#hs').checked;
-  const allow_party=app.querySelector('#ap').checked;
+  const brand=app.querySelector('#br').value;
+  const participant_fields=[...app.querySelectorAll('[data-pf]')].filter(b=>b.checked).map(b=>b.dataset.pf);
+  const allow_party=participant_fields.length?false:app.querySelector('#ap').checked;
   const max_party=allow_party?Math.max(parseInt(app.querySelector('#mp').value,10)||1,1):1;
   const err=app.querySelector('#cerr'); err.textContent='';
   if(!title){ err.textContent='請填活動名稱。'; return; }
@@ -713,7 +979,7 @@ async function createEvent(){
 
   try{
     const ev=await backend.createEvent({title,description:desc,event_date,quota,members_only,
-      success_message,has_slots,allow_party,max_party}, slots);
+      success_message,has_slots,allow_party,max_party,brand,participant_fields}, slots);
     toast('活動建立完成');
     app.querySelector('#t').value=''; app.querySelector('#ds').value='';
     app.querySelector('#d').value=''; app.querySelector('#dd').value='';
@@ -759,7 +1025,8 @@ function renderTable(){
 function rowHtml(e){
   const status = e.is_open ? '<span class="pill go">報名中</span>' : '<span class="pill closed">已關閉</span>';
   return `<tr class="srow" data-id="${e.id}">
-      <td><div class="ename">${esc(e.title)}</div>
+      <td><div class="ename"><span class="bdot" style="background:${
+          BRANDS[e.brand||DEFAULT_BRAND].theme.accent}" title="${esc(brandOf(e.brand).name)}"></span>${esc(e.title)}</div>
         <div class="etime">🗓 ${esc(e.has_slots?fmtDay(e.event_date):fmtDate(e.event_date))}${
           e.has_slots?`　·　${(e.slots||[]).length} 個時段`:''}</div></td>
       <td class="cnum">${e.registered}/${e.quota}</td>
@@ -796,6 +1063,10 @@ async function buildDetail(detail, e){
       <div class="msg-label" style="margin-top:16px">✅ 報名成功通知（可用 {姓名}${e.has_slots?'、{時段}':''}${e.allow_party?'、{人數}':''} 代入，每位會員各發一則）</div>
       <textarea class="tmpl"></textarea>
     </div>
+    <div class="dmeta"><span class="bdot" style="background:${
+        BRANDS[e.brand||DEFAULT_BRAND].theme.accent}"></span>${esc(brandOf(e.brand).name)}${
+        (e.participant_fields||[]).length?`　·　收集：${(e.participant_fields||[])
+          .map(k=>PFIELDS[k]?PFIELDS[k].label:k).join('、')}`:''}</div>
     ${e.has_slots?`<div class="dn-title">時段狀況</div>
       <div class="slotstat">${slots.map(x=>`<div class="ss${x.taken>=x.quota?' full':''}">
         <span class="sst">${esc(fmtTime(x.starts_at))}</span>
@@ -852,9 +1123,16 @@ async function buildDetail(detail, e){
   if(!rs.length){ n.innerHTML='<div style="color:var(--muted)">目前還沒有人報名</div>'; return; }
 
   const slotTime=id=>{ const x=slots.find(y=>y.id===id); return x?fmtTime(x.starts_at):''; };
+  const pdetail=r=>{
+    const ps=r.participants||[];
+    if(!ps.length) return '';
+    return `<div class="plist2">${ps.map((x,i)=>`<div class="pline">${i+1}. ${esc(x.name||'')}${
+      x.gender?'　'+esc(x.gender):''}${x.birth_year?'　民國 '+esc(String(x.birth_year))+' 年次':''}${
+      x.address?'<br><span class="paddr">'+esc(x.address)+'</span>':''}</div>`).join('')}</div>`;
+  };
   const line=(r,i)=>`<div class="nrow"><span>${i+1}. ${esc(r.name)}　${esc(r.phone)}${
       (r.party_size||1)>1?`　<b class="pty">${r.party_size} 位</b>`:''}</span>
-    <button class="nbtn" data-id="${r.id}">複製通知</button></div>`;
+    <button class="nbtn" data-id="${r.id}">複製通知</button></div>${pdetail(r)}`;
 
   if(e.has_slots){
     n.innerHTML=slots.map(x=>{
@@ -889,7 +1167,8 @@ async function buildDetail(detail, e){
   if(p.has('e')) renderRegister(p.get('e'));
   else if(p.has('admin')) renderAdmin();
   else{
-    app.innerHTML=`<div class="brand">${esc(CONFIG.CAFE_NAME)}</div>
+    applyBrand(DEFAULT_BRAND);
+    app.innerHTML=brandHeader(DEFAULT_BRAND)+`
     <div class="card"><h1>活動報名系統</h1>
     <p class="desc">這是後台入口。建立活動後複製連結分享給客人。</p>
     <a class="btn ghost" href="?admin" style="display:block;text-align:center;text-decoration:none">進入後台</a>
