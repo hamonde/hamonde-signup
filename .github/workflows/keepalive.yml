@@ -1,0 +1,30 @@
+# 每 3 天打一次 Supabase API，避免免費方案因閒置而自動暫停
+# （暫停會讓客人的報名連結直接失效，且不會主動通知）
+name: Keep Supabase awake
+
+on:
+  schedule:
+    - cron: '17 19 */3 * *'   # UTC 19:17 ≒ 台灣時間隔日 03:17，每 3 天
+  workflow_dispatch:           # 也可以到 Actions 頁面手動觸發
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          # 這把是 publishable key，本來就設計成可公開（index.html 裡也有同一把）
+          SUPABASE_URL: https://hbduagmuevfzlypckouq.supabase.co
+          SUPABASE_KEY: sb_publishable_cLhra1M543iJgTPTzTTwhg_ZfqANPvS
+        run: |
+          code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 30 \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            "$SUPABASE_URL/rest/v1/events?select=id&limit=1")
+          echo "HTTP $code"
+          head -c 200 /tmp/body; echo
+          if [ "$code" != "200" ]; then
+            echo "::error::Supabase 沒有正常回應（HTTP $code）— 專案可能已被暫停，請到 Supabase 後台確認。"
+            exit 1
+          fi
+          echo "✅ Supabase 正常"
