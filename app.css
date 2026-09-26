@@ -176,6 +176,22 @@
   .pty{font-family:var(--font-head),serif; color:var(--accent-ink); background:#f3ead9;
     padding:1px 7px; border-radius:999px; font-size:12px}
 
+  /* 後台：編輯活動 */
+  .editbox{margin-top:14px}
+  .edt{border:1px solid var(--line); border-radius:14px; padding:16px; background:#fff}
+  .edth{font-family:var(--font-head),serif; font-weight:600; font-size:16px; margin-bottom:4px}
+  .edtlock{font-size:12px; line-height:1.6; color:#7a5a12; background:#fff5e2;
+    border:1px solid #f0dcae; border-radius:10px; padding:10px 12px; margin:10px 0 4px}
+  .edtnote{font-size:12px; color:var(--muted); margin-top:6px}
+  .edtbtns{display:flex; gap:8px; margin-top:14px}
+  .eslot{display:flex; align-items:center; gap:8px; margin-top:8px}
+  /* 中文環境的 time input 會顯示「上午 10:30」，要夠寬才不會裁掉分鐘 */
+  .eslot .es-t{flex:0 0 auto; width:152px}
+  .eslot .es-q{width:76px; flex:0 0 auto}
+  .es-n{font-size:12px; color:var(--muted); flex:1 1 auto}
+  .eslot .sdel:disabled{opacity:.35; cursor:not-allowed}
+  .e-addslot{width:auto}
+
   .danger{margin-top:18px; padding-top:14px; border-top:1px dashed #e7c3bd}
   .dz-open{font-size:12px; padding:7px 12px; border-radius:9px; cursor:pointer;
     border:1px solid #e7c3bd; background:transparent; color:#a6564b; opacity:.75}

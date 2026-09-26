@@ -98,6 +98,16 @@ function makeSupabaseBackend(){
       }
       return data; },
     async setOpen(id,open){ await sb.from('events').update({is_open:open}).eq('id',id); },
+    async updateEvent(id,patch){ const {data,error}=await sb.from('events').update(patch).eq('id',id).select();
+      if(error) throw error;
+      if(!data||!data.length) throw new Error('沒有更新到任何資料，請確認登入狀態。'); return data[0]; },
+    async updateSlot(id,patch){ const {error}=await sb.from('event_slots').update(patch).eq('id',id);
+      if(error) throw error; },
+    async addSlots(eventId,rows){ if(!rows.length) return;
+      const {error}=await sb.from('event_slots').insert(rows.map(x=>({event_id:eventId,...x})));
+      if(error) throw error; },
+    async deleteSlot(id){ const {error}=await sb.from('event_slots').delete().eq('id',id);
+      if(error) throw error; },
     async deleteEvent(id){ const {data,error}=await sb.from('events').delete().eq('id',id).select();
       if(error) throw error;
       if(!data||!data.length) throw new Error('沒有刪除任何資料，請確認登入狀態與權限。'); },
@@ -243,6 +253,12 @@ function makeDemoBackend(){
         starts_at:x.starts_at,quota:x.quota,sort:i}));
       return e; },
     async setOpen(id,open){ const e=events.find(x=>x.id===id); if(e)e.is_open=open; },
+    async updateEvent(id,patch){ const e=events.find(x=>x.id===id); if(!e) throw new Error('找不到活動');
+      Object.assign(e,patch); return e; },
+    async updateSlot(id,patch){ const x=slots.find(y=>y.id===id); if(x) Object.assign(x,patch); },
+    async addSlots(eventId,rows){ rows.forEach((x,i)=>slots.push({id:'s'+Date.now()+'_'+i,
+      event_id:eventId, starts_at:x.starts_at, quota:x.quota, sort:x.sort||0})); },
+    async deleteSlot(id){ const i=slots.findIndex(x=>x.id===id); if(i>=0) slots.splice(i,1); },
     async deleteEvent(id){ const i=events.findIndex(x=>x.id===id); if(i>=0)events.splice(i,1);
       for(let j=regs.length-1;j>=0;j--) if(regs[j].event_id===id) regs.splice(j,1);
       for(let j=slots.length-1;j>=0;j--) if(slots[j].event_id===id) slots.splice(j,1); },
@@ -646,6 +662,146 @@ const PRESETS={
 };
 
 // ============================================================
+// 編輯活動
+// 已經有人報名之後，會改變報名規則的結構性設定就鎖住，
+// 避免既有報名資料與新規則對不起來
+// ============================================================
+function toLocalInput(iso, dateOnly){
+  if(!iso) return '';
+  const d=new Date(iso), p=n=>String(n).padStart(2,'0');
+  const day=`${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+  return dateOnly ? day : `${day}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+function buildEditor(box, e){
+  const locked=(e.registered||0)>0;      // 已有人報名
+  const slots=e.slots||[];
+  box.innerHTML=`
+    <div class="edt">
+      <div class="edth">編輯活動</div>
+      ${locked?`<div class="edtlock">已經有 ${e.registered} 人報名，
+        因此「時間模式、限會員、攜伴、收集欄位、聯絡方式」等會改變報名規則的設定已鎖定。
+        要調整這些必須另外開一場新活動。</div>`:''}
+
+      <label>活動名稱</label><input class="e-t" value="${esc(e.title||'')}">
+      <label>活動說明</label><textarea class="e-ds">${esc(e.description||'')}</textarea>
+
+      <div class="row">
+        <div><label>${e.has_slots?'活動日期':'活動時間'}</label>
+          <input class="e-d" type="${e.has_slots?'date':'datetime-local'}"
+            value="${toLocalInput(e.event_date, e.has_slots)}"></div>
+        ${e.has_slots?'':`<div><label>名額</label>
+          <input class="e-q" type="number" min="1" value="${e.quota}"></div>`}
+      </div>
+
+      <label>品牌</label>
+      <select class="e-br">${Object.entries(BRANDS).map(([k,b])=>
+        `<option value="${k}"${(e.brand||DEFAULT_BRAND)===k?' selected':''}>${esc(b.name)}</option>`).join('')}</select>
+      <div class="edtnote">換品牌會改變報名連結指向的頁面，記得重新複製連結分享。</div>
+
+      <label>報名成功顯示文字</label>
+      <textarea class="e-sm">${esc(e.success_message||DEFAULT_SUCCESS)}</textarea>
+
+      ${e.has_slots?`<label style="margin-top:16px">時段</label>
+        <div class="e-slots">${slots.map(x=>`
+          <div class="eslot" data-id="${x.id}" data-taken="${x.taken||0}">
+            <input type="time" class="es-t" value="${toLocalInput(x.starts_at).slice(11,16)}">
+            <input type="number" class="es-q" min="${Math.max(x.taken||0,1)}" value="${x.quota}">
+            <span class="sunit">人</span>
+            <span class="es-n">${(x.taken||0)?`已報 ${x.taken}`:'尚無報名'}</span>
+            <button type="button" class="sdel"${(x.taken||0)?' disabled title="已有人報名，不能刪除"':' title="刪除這個時段"'}>✕</button>
+          </div>`).join('')}</div>
+        <button type="button" class="addslot e-addslot">＋ 新增一個時段</button>`:''}
+
+      <div class="err e-err"></div>
+      <div class="edtbtns">
+        <button type="button" class="mini2 e-save">儲存修改</button>
+        <button type="button" class="mini2 ghost e-cancel">取消</button>
+      </div>
+    </div>`;
+
+  const $=q=>box.querySelector(q), err=$('.e-err');
+
+  // 時段的新增與刪除
+  if(e.has_slots){
+    const list=$('.e-slots');
+    const wire=row=>{
+      const b=row.querySelector('.sdel');
+      if(b.disabled) return;
+      b.onclick=()=>{ row.dataset.removed='1'; row.style.display='none'; };
+    };
+    list.querySelectorAll('.eslot').forEach(wire);
+    $('.e-addslot').onclick=()=>{
+      const row=document.createElement('div');
+      row.className='eslot'; row.dataset.new='1'; row.dataset.taken='0';
+      row.innerHTML=`<input type="time" class="es-t" value="10:00">
+        <input type="number" class="es-q" min="1" value="4">
+        <span class="sunit">人</span><span class="es-n">新增</span>
+        <button type="button" class="sdel" title="移除">✕</button>`;
+      wire(row); list.appendChild(row);
+    };
+  }
+
+  $('.e-cancel').onclick=()=>{ box.hidden=true; box.innerHTML=''; };
+
+  $('.e-save').onclick=async()=>{
+    err.textContent='';
+    const title=$('.e-t').value.trim();
+    if(!title){ err.textContent='請填活動名稱。'; return; }
+    const dv=$('.e-d').value;
+    if(e.has_slots && !dv){ err.textContent='請選擇活動日期。'; return; }
+
+    const patch={
+      title, description:$('.e-ds').value.trim(),
+      brand:$('.e-br').value,
+      success_message:$('.e-sm').value.trim()||DEFAULT_SUCCESS,
+      event_date: dv ? new Date(e.has_slots ? dv+'T00:00:00' : dv).toISOString() : null,
+    };
+
+    // 整理時段
+    let keep=[], add=[], del=[];
+    if(e.has_slots){
+      const rows=[...box.querySelectorAll('.eslot')];
+      for(const r of rows){
+        const taken=parseInt(r.dataset.taken,10)||0;
+        if(r.dataset.removed==='1'){
+          if(r.dataset.new!=='1') del.push(r.dataset.id);
+          continue;
+        }
+        const t=r.querySelector('.es-t').value, q=parseInt(r.querySelector('.es-q').value,10);
+        if(!t||!q||q<1){ err.textContent='時段的時間與名額都要填。'; return; }
+        if(q<taken){ err.textContent=`${t} 這個時段已經有 ${taken} 人報名，名額不能少於 ${taken}。`; return; }
+        const [h,m]=t.split(':').map(Number);
+        const d=new Date(dv+'T00:00:00'); d.setHours(h,m,0,0);
+        (r.dataset.new==='1'?add:keep).push({id:r.dataset.id, starts_at:d.toISOString(), quota:q});
+      }
+      if(!keep.length && !add.length){ err.textContent='至少要保留一個時段。'; return; }
+      patch.quota=[...keep,...add].reduce((a,x)=>a+x.quota,0);
+    }else{
+      const q=parseInt($('.e-q').value,10);
+      if(!q||q<1){ err.textContent='請填正確的名額。'; return; }
+      if(q<(e.registered||0)){
+        err.textContent=`已經有 ${e.registered} 人報名，名額不能少於 ${e.registered}。`; return; }
+      patch.quota=q;
+    }
+
+    const btn=$('.e-save'); btn.disabled=true; btn.textContent='儲存中…';
+    try{
+      await backend.updateEvent(e.id, patch);
+      for(const x of keep) await backend.updateSlot(x.id, {starts_at:x.starts_at, quota:x.quota});
+      for(const id of del) await backend.deleteSlot(id);
+      if(add.length) await backend.addSlots(e.id, add.map((x,i)=>({
+        starts_at:x.starts_at, quota:x.quota, sort:keep.length+i})));
+      toast('活動已更新');
+      await refreshList();
+    }catch(ex){
+      err.textContent='儲存失敗：'+(ex.message||'請稍後再試。');
+      btn.disabled=false; btn.textContent='儲存修改';
+    }
+  };
+}
+
+// ============================================================
 // 匯出報名名單（CSV）
 // 管理者已登入，直接在瀏覽器產生檔案，不需要任何額外金鑰
 // ============================================================
@@ -934,7 +1090,9 @@ async function buildDetail(detail, e){
       <button class="mini2 ghost" data-a="copy">複製報名連結</button>
       <button class="mini2 ghost" data-a="msg">訊息模板</button>
       <button class="mini2 ghost" data-a="csv">匯出名單</button>
+      <button class="mini2 ghost" data-a="edit">✏️ 編輯活動</button>
     </div>
+    <div class="editbox" hidden></div>
     <div class="msg" hidden>
       <div class="msg-label">📣 報名邀請訊息（貼到 LINE 揪團用）</div>
       <textarea class="invite"></textarea>
@@ -977,6 +1135,11 @@ async function buildDetail(detail, e){
 
   detail.querySelector('[data-a="toggle"]').onclick=async()=>{
     await backend.setOpen(e.id, !e.is_open); e.is_open=!e.is_open; renderTable();
+  };
+  detail.querySelector('[data-a="edit"]').onclick=()=>{
+    const box=detail.querySelector('.editbox');
+    if(box.hidden){ buildEditor(box, e); box.hidden=false; box.scrollIntoView({block:'nearest'}); }
+    else { box.hidden=true; box.innerHTML=''; }
   };
   detail.querySelector('[data-a="copy"]').onclick=()=>{ navigator.clipboard?.writeText(link); toast('已複製報名連結'); };
   detail.querySelector('[data-a="msg"]').onclick=()=>{ const m=detail.querySelector('.msg'); m.hidden=!m.hidden; };
