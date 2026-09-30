@@ -1,0 +1,12 @@
+<svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="活動報名">
+  <title>活動報名</title>
+  <circle cx="16" cy="16" r="15.5" fill="#14213D"/>
+  <circle cx="16" cy="16" r="13.3" fill="none" stroke="#C9A24B" stroke-width="1"/>
+  <g transform="translate(16 16) scale(0.88) translate(-16 -16)" fill="#C9A24B">
+    <path d="M21.6 8.2v15.6l-8.3-3.5v-8.6z"/>
+    <rect x="7.2" y="12.9" width="6.6" height="6.2" rx="1.7"/>
+    <path d="M10.4 19.5l1.25 5.9h3.2l-1.45-5.9z"/>
+    <path d="M24.6 12.3a5.7 5.7 0 0 1 0 7.4" fill="none" stroke="#C9A24B"
+      stroke-width="2.1" stroke-linecap="round"/>
+  </g>
+</svg>
