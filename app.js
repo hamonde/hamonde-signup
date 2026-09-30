@@ -1221,17 +1221,34 @@ async function buildDetail(detail, e){
 // ============================================================
 // 進入點
 // ============================================================
+// 後台只有一個入口（首頁），品牌頁只負責客人報名
+const IS_MAIN_PAGE = DEFAULT_BRAND === 'hamonde';
+
 (function init(){
   backend = CONFIG.DEMO_MODE ? makeDemoBackend() : makeSupabaseBackend();
   const p=new URLSearchParams(location.search);
-  if(p.has('e')) renderRegister(p.get('e'));
-  else if(p.has('admin')) renderAdmin();
-  else{
-    applyBrand(DEFAULT_BRAND);
+
+  if(p.has('e')){ renderRegister(p.get('e')); return; }
+
+  // 從品牌頁進後台的話，導回唯一的入口
+  if(p.has('admin')){
+    if(IS_MAIN_PAGE) renderAdmin();
+    else location.replace('index.html?admin');
+    return;
+  }
+
+  applyBrand(DEFAULT_BRAND);
+  if(IS_MAIN_PAGE){
     app.innerHTML=brandHeader(DEFAULT_BRAND)+`
     <div class="card"><h1>活動報名系統</h1>
     <p class="desc">這是後台入口。建立活動後複製連結分享給客人。</p>
-    <a class="btn ghost" href="?admin" style="display:block;text-align:center;text-decoration:none">進入後台</a>
-    <a class="btn" href="?e=coffee01" style="display:block;text-align:center;text-decoration:none">看看範例報名頁</a></div>`;
+    <a class="btn ghost" href="?admin" style="display:block;text-align:center;text-decoration:none">進入後台</a></div>`;
+  }else{
+    // 品牌頁沒有帶活動代碼：客人多半是拿到不完整的連結
+    app.innerHTML=brandHeader(DEFAULT_BRAND)+`
+    <div class="card"><div class="state"><div class="icon">🔗</div>
+      <h2>請使用報名連結</h2>
+      <p>這個頁面需要搭配活動連結才能顯示報名內容。<br>請向主辦單位索取完整的報名連結。</p>
+    </div></div>`;
   }
 })();
