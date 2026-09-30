@@ -508,19 +508,34 @@ async function renderAdmin(){
   app.innerHTML=`<div class="brand"><img src="${brandOf(DEFAULT_BRAND).logo}" alt="" style="height:26px"><span>${esc(CONFIG.CAFE_NAME)}・後台</span></div>
     ${backend.demo?'<div class="banner">🔧 示範模式：資料存在瀏覽器記憶體，重新整理會還原。設定好 Supabase 後即為正式資料。</div>':''}
     <div class="tabs2">
-      <button class="t2 on" data-t="events">活動</button>
+      <button class="t2 on" data-t="events">活動總覽</button>
+      <button class="t2" data-t="new">新增活動</button>
       <button class="t2" data-t="members">會員</button>
     </div>
     <div id="panel"></div>
     ${backend.demo?'':'<button class="btn ghost" id="out" style="margin-top:16px">登出</button>'}`;
   const out=app.querySelector('#out'); if(out) out.onclick=async()=>{ await backend.signOut(); renderLogin(); };
   const tabs=app.querySelectorAll('.t2');
-  tabs.forEach(b=> b.onclick=()=>{ tabs.forEach(x=>x.classList.remove('on')); b.classList.add('on');
-    if(b.dataset.t==='events') renderEventsPanel(); else renderMembersPanel(); });
-  renderEventsPanel();
+  tabs.forEach(b=> b.onclick=()=> switchTab(b.dataset.t));
+  switchTab('events');
+}
+
+// 切換後台分頁（也供建立活動後自動跳回總覽用）
+function switchTab(name){
+  const tabs=app.querySelectorAll('.t2');
+  tabs.forEach(x=> x.classList.toggle('on', x.dataset.t===name));
+  if(name==='new') renderNewEventPanel();
+  else if(name==='members') renderMembersPanel();
+  else renderEventsPanel();
 }
 
 function renderEventsPanel(){
+  const panel=app.querySelector('#panel');
+  panel.innerHTML=`<div id="list"></div>`;
+  refreshList();
+}
+
+function renderNewEventPanel(){
   const panel=app.querySelector('#panel');
   panel.innerHTML=`
     <div class="card">
@@ -574,12 +589,11 @@ function renderEventsPanel(){
       <textarea id="sm">已完成該次會員活動報名，請留意 LINE 訊息以確認資訊。</textarea>
       <button class="btn" id="create">建立並產生報名連結</button>
       <div class="err" id="cerr"></div>
-    </div>
-    <div id="list"></div>`;
+    </div>`;
   app.querySelector('#create').onclick=createEvent;
   wireEventForm(panel);
-  refreshList();
 }
+
 
 async function renderMembersPanel(){
   const panel=app.querySelector('#panel');
@@ -1015,11 +1029,9 @@ async function createEvent(){
     const ev=await backend.createEvent({title,description:desc,event_date,quota,members_only,
       success_message,has_slots,allow_party,max_party,brand,participant_fields,collect_contact}, slots);
     toast('活動建立完成');
-    app.querySelector('#t').value=''; app.querySelector('#ds').value='';
-    app.querySelector('#d').value=''; app.querySelector('#dd').value='';
-    app.querySelector('#slotlist').innerHTML='<div class="noslot">尚未設定時段</div>';
-    await refreshList();
     navigator.clipboard?.writeText(regLink(ev.slug, ev.brand)).then(()=>toast('報名連結已複製'));
+    switchTab('events');               // 跳回總覽，立刻看到剛建立的活動
+    adminFilter='all';
   }catch(e){ err.textContent='建立失敗，請稍後再試。'; }
 }
 
@@ -1027,6 +1039,7 @@ let adminEvents=[]; let adminFilter='all';
 
 async function refreshList(){
   const box=app.querySelector('#list');
+  if(!box) return;                     // 不在「活動總覽」分頁時不用更新
   box.innerHTML='<p style="color:var(--muted);margin-top:20px">載入活動中…</p>';
   adminEvents=await backend.listEvents();
   renderTable();
@@ -1034,6 +1047,7 @@ async function refreshList(){
 
 function renderTable(){
   const box=app.querySelector('#list');
+  if(!box) return;
   const tabs=`<div class="filters">
       <button class="ftab ${adminFilter==='all'?'on':''}" data-f="all">全部</button>
       <button class="ftab ${adminFilter==='open'?'on':''}" data-f="open">報名中</button>
