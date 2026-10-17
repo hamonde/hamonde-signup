@@ -117,6 +117,13 @@ function makeSupabaseBackend(){
         participants:(r.participants||[]).sort((a,b)=>a.sort-b.sort)})); },
     async listSlots(eventId){ const {data}=await sb.from('event_slots').select('*')
       .eq('event_id',eventId).order('sort').order('starts_at'); return data||[]; },
+    async loadConfig(){ const {data,error}=await sb.from('app_config').select('key,value');
+      if(error) throw error;
+      const out={}; (data||[]).forEach(r=>out[r.key]=r.value); return out; },
+    async saveConfig(key,value){
+      const {error}=await sb.from('app_config')
+        .upsert({key, value, updated_at:new Date().toISOString()}, {onConflict:'key'});
+      if(error) throw error; },
     async listMembers(){ const {data}=await sb.from('members').select('*').order('created_at',{ascending:false}); return data||[]; },
     async addMember(mem){ const {data,error}=await sb.from('members').insert(mem).select().single(); if(error) throw error; return data; },
     async setMemberActive(id,active){ await sb.from('members').update({active}).eq('id',id); },
@@ -126,6 +133,23 @@ function makeSupabaseBackend(){
 
 function makeDemoBackend(){
   const digits=s=>String(s||'').replace(/[^0-9]/g,'');
+  const demoConfig={
+    participant_fields: JSON.parse(JSON.stringify(DEFAULT_PFIELDS)),
+    presets: [
+      {id:'h_self', label:'HAMONDE・會員本人', hint:'指定時間，限會員本人，1 人',
+       brand:'hamonde', has_slots:false, allow_party:false, max_party:1,
+       members_only:true, contact:true, fields:[]},
+      {id:'h_party', label:'HAMONDE・會員報名', hint:'客人選時段，可帶同行者',
+       brand:'hamonde', has_slots:true, allow_party:true, max_party:4,
+       members_only:true, contact:true, fields:[]},
+      {id:'q_lecture', label:'乾坤堂・講堂報名', hint:'指定時間，收姓名與性別',
+       brand:'qiankun', has_slots:false, allow_party:false, max_party:1,
+       members_only:false, contact:false, fields:['name','gender']},
+      {id:'q_other', label:'乾坤堂・其他活動', hint:'指定時間，收完整參與者資料',
+       brand:'qiankun', has_slots:false, allow_party:false, max_party:1,
+       members_only:false, contact:false, fields:['name','gender','birth_year','address']},
+    ],
+  };
   const members=[
     {id:'m1', code:null, phone:'0912-000-111', name:'王小明', active:true},
     {id:'m2', code:null, phone:'0922-000-222', name:'林美美', active:true},
@@ -184,6 +208,8 @@ function makeDemoBackend(){
       return {title:e.title,description:e.description,event_date:e.event_date,is_open:e.is_open,
         members_only:e.members_only!==false, success_message:e.success_message||DEFAULT_SUCCESS,
         brand:e.brand||DEFAULT_BRAND, participant_fields:e.participant_fields||[],
+        field_defs:(e.participant_fields||[]).map(k=>
+          demoConfig.participant_fields.find(f=>f.key===k)).filter(Boolean),
         collect_contact:e.collect_contact!==false,
         has_slots:!!e.has_slots, allow_party:!!e.allow_party, max_party:Math.max(e.max_party||1,1),
         slots:sl,
@@ -204,8 +230,9 @@ function makeDemoBackend(){
       if(needP){
         if(!parts||!parts.length) return {ok:false,reason:'need_participants'};
         for(const x of parts) for(const k of pflds){
-          if(k==='birth_year'){ if(!/^\d{1,3}$/.test(String(x.birth_year||''))) return {ok:false,reason:'invalid_participant'}; }
-          else if(!String(x[k]||'').trim()) return {ok:false,reason:'invalid_participant'};
+          const d=demoConfig.participant_fields.find(f=>f.key===k)||{key:k,label:k,type:'text'};
+          const msg=checkField(d, x[k]);
+          if(msg) return {ok:false, reason:'invalid_participant', field:d.label||k};
         }
         // (a) 同一次送出裡重複
         const seen=new Set();
@@ -241,7 +268,7 @@ function makeDemoBackend(){
       }else if(cnt(e.id)+pt>e.quota) return {ok:false,reason:'full'};
       regs.push({id:'r'+Date.now(),event_id:e.id,slot_id:e.has_slots?slotId:null,party_size:pt,
         name:storeName,phone:storePhone,created_at:new Date().toISOString(),
-        participants:needP?parts.map((x,i)=>({...x,sort:i})):[]});
+        participants:needP?parts.map((x,i)=>({...x,sort:i,data:{...x}})):[]});
       return {ok:true}; },
     async signIn(){}, async signOut(){}, async session(){ return {demo:true}; },
     async listEvents(){ return events.slice().reverse().map(e=>({...e, registered:cnt(e.id),
@@ -264,6 +291,8 @@ function makeDemoBackend(){
       for(let j=slots.length-1;j>=0;j--) if(slots[j].event_id===id) slots.splice(j,1); },
     async listRegs(eventId){ return regs.filter(r=>r.event_id===eventId); },
     async listSlots(eventId){ return slotsOf(eventId); },
+    async loadConfig(){ return JSON.parse(JSON.stringify(demoConfig)); },
+    async saveConfig(key,value){ demoConfig[key]=JSON.parse(JSON.stringify(value)); },
     async listMembers(){ return members.slice(); },
     async addMember(mem){ const m={id:'m'+Date.now(), member_code:null, active:true, ...mem}; members.unshift(m); return m; },
     async setMemberActive(id,active){ const m=members.find(x=>String(x.id)===String(id)); if(m)m.active=active; },
@@ -289,31 +318,59 @@ function regLink(slug, brand){
   return location.origin+dir+(brandOf(brand).page||'')+'?e='+slug;
 }
 
-// 可逐位收集的參與者欄位
-const PFIELDS={
-  name:      {label:'姓名',     ph:'參與者姓名'},
-  gender:    {label:'性別',     opts:['男','女','其他']},
-  birth_year:{label:'出生年次', ph:'民國年，例 75', tip:'民國年次'},
-  address:   {label:'居住地址', ph:'例：台中市西區…'},
-};
+// 參與者欄位與活動範本都存在資料庫的 app_config，後台可直接編輯。
+// 這裡的預設值只在設定還沒載入時當後備。
+const DEFAULT_PFIELDS=[
+  {key:'name',       label:'姓名',     type:'text',   ph:'參與者姓名', locked:true},
+  {key:'gender',     label:'性別',     type:'select', opts:['男','女','其他']},
+  {key:'birth_year', label:'出生年次', type:'number', ph:'民國年，例 75', min:1, max:200},
+  {key:'address',    label:'居住地址', type:'text',   ph:'例：台中市西區…', wide:true},
+  {key:'line_id',    label:'LINE ID',  type:'text',   ph:'例：hamonde_cafe'},
+];
+let FIELD_LIST = DEFAULT_PFIELDS.slice();   // 陣列，保留顯示順序
+let PFIELDS = {};                            // 以 key 查詢用
+let PRESETS = [];
 
-// 產生一位參與者的輸入列
-function participantRow(fields, idx){
-  const f=k=>{
-    const d=PFIELDS[k];
-    if(k==='gender') return `<div class="pf"><label>${d.label}</label>
-      <select data-k="gender"><option value="">請選擇</option>
-      ${d.opts.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
-    if(k==='birth_year') return `<div class="pf"><label>${d.label}</label>
-      <input data-k="birth_year" inputmode="numeric" maxlength="3" placeholder="${d.ph}"></div>`;
-    return `<div class="pf ${k==='address'?'wide':''}"><label>${d.label}</label>
-      <input data-k="${k}" placeholder="${d.ph}"></div>`;
+function indexFields(){
+  PFIELDS={}; FIELD_LIST.forEach(f=>PFIELDS[f.key]=f);
+}
+indexFields();
+
+// 找不到定義時（例如欄位後來被刪掉）給一個最低限度的後備，避免畫面壞掉
+function fieldDef(key){ return PFIELDS[key] || {key, label:key, type:'text'}; }
+
+// 產生一位參與者的輸入列（defs 為欄位定義陣列）
+function participantRow(defs, idx){
+  const one=d=>{
+    const lbl=esc(d.label||d.key), ph=esc(d.ph||'');
+    if(d.type==='select') return `<div class="pf${d.wide?' wide':''}"><label>${lbl}</label>
+      <select data-k="${esc(d.key)}"><option value="">請選擇</option>
+      ${(d.opts||[]).map(o=>`<option>${esc(o)}</option>`).join('')}</select></div>`;
+    if(d.type==='number') return `<div class="pf${d.wide?' wide':''}"><label>${lbl}</label>
+      <input data-k="${esc(d.key)}" inputmode="numeric" maxlength="6" placeholder="${ph}"></div>`;
+    return `<div class="pf${d.wide?' wide':''}"><label>${lbl}</label>
+      <input data-k="${esc(d.key)}" placeholder="${ph}"></div>`;
   };
   return `<div class="prow" data-i="${idx}">
     <div class="prowh"><span>參與者 ${idx+1}</span>
       <button type="button" class="pdel" title="移除">✕</button></div>
-    <div class="pgrid">${fields.map(f).join('')}</div>
+    <div class="pgrid">${defs.map(one).join('')}</div>
   </div>`;
+}
+
+// 單一欄位的檢查，回傳錯誤訊息或 null
+function checkField(d, v){
+  v=String(v||'').trim();
+  if(!v) return `請填寫${d.label||d.key}。`;
+  if(d.type==='number'){
+    if(!/^\d{1,6}$/.test(v)) return `${d.label||d.key}請填數字。`;
+    const n=+v;
+    if(d.min!=null && n<d.min) return `${d.label||d.key}不能小於 ${d.min}。`;
+    if(d.max!=null && n>d.max) return `${d.label||d.key}不能大於 ${d.max}。`;
+  }
+  if(d.type==='select' && d.opts && d.opts.length && !d.opts.includes(v))
+    return `請選擇有效的${d.label||d.key}。`;
+  return null;
 }
 
 // ============================================================
@@ -340,8 +397,12 @@ async function renderRegister(slug){
 
   const mo=info.members_only;
   const slots=info.has_slots?(info.slots||[]):[];
-  const pf=(info.participant_fields||[]).filter(k=>PFIELDS[k]);
-  const needP=pf.length>0;
+  // 欄位定義由後端隨活動一起回傳，客人端不需要另外載入設定
+  const pdefs=(info.field_defs && info.field_defs.length)
+      ? info.field_defs
+      : (info.participant_fields||[]).map(fieldDef);
+  const pf=pdefs.map(d=>d.key);
+  const needP=pdefs.length>0;
   // 限會員一定要手機（會員身分靠手機辨識）；其餘看活動設定
   const wantContact=mo || info.collect_contact!==false;
   const maxParty=(!needP&&info.allow_party)?Math.max(info.max_party||1,1):1;
@@ -362,7 +423,7 @@ async function renderRegister(slug){
       <select id="pt">${Array.from({length:maxParty},(_,i)=>
         `<option value="${i+1}">${i+1} 位${i?'（含同行者）':''}</option>`).join('')}</select>`:''}
     ${needP?`<label>參與者資料</label>
-      <div id="plist">${participantRow(pf,0)}</div>
+      <div id="plist">${participantRow(pdefs,0)}</div>
       <button type="button" class="addp" id="addp">＋ 新增一位參與者</button>
       ${wantContact?`<label for="p" style="margin-top:18px">聯絡電話</label>
         <input id="p" placeholder="0912-345-678" inputmode="tel" autocomplete="tel">`:''}`
@@ -400,7 +461,7 @@ async function renderRegister(slug){
     plist.querySelectorAll('.prow').forEach(wireRow); renumber();
     card.querySelector('#addp').onclick=()=>{
       const n=plist.querySelectorAll('.prow').length;
-      plist.insertAdjacentHTML('beforeend', participantRow(pf,n));
+      plist.insertAdjacentHTML('beforeend', participantRow(pdefs,n));
       wireRow(plist.lastElementChild); renumber();
       plist.lastElementChild.querySelector('input,select')?.focus();
     };
@@ -446,7 +507,8 @@ async function renderRegister(slug){
         not_found:'找不到活動。', invalid:'資料不完整，請再檢查。',
         need_slot:'請先選擇一個時段。',
         need_participants:'請至少填寫一位參與者的資料。',
-        invalid_participant:'參與者資料不完整，請檢查每一位的必填欄位。',
+        invalid_participant: r.field ? `參與者資料不完整：請檢查「${r.field}」。`
+                                     : '參與者資料不完整，請檢查每一位的必填欄位。',
         party_too_big:'超過每組可報名的人數上限。',
         not_member:'查無會員資料，此活動僅限會員報名。',
         duplicate:'這支手機已經報名過這場活動囉，一場活動只能報名一個時段。'};
@@ -468,13 +530,9 @@ async function renderRegister(slug){
     if(needP){
       parts=readParticipants();
       for(let i=0;i<parts.length;i++){
-        for(const k of pf){
-          if(k==='birth_year'){
-            const v=parts[i].birth_year;
-            if(!/^\d{1,3}$/.test(v)||+v<1||+v>200){
-              err.textContent=`參與者 ${i+1} 的出生年次請填民國年（例：75）。`; return; }
-          }else if(!parts[i][k]){
-            err.textContent=`請填寫參與者 ${i+1} 的${PFIELDS[k].label}。`; return; }
+        for(const d of pdefs){
+          const msg=checkField(d, parts[i][d.key]);
+          if(msg){ err.textContent=`參與者 ${i+1}：${msg}`; return; }
         }
       }
     }
@@ -505,12 +563,21 @@ async function renderRegister(slug){
 async function renderAdmin(){
   const sess=await backend.session();
   if(!sess){ return renderLogin(); }
+  // 欄位定義與範本都存在資料庫，進後台先載入
+  try{
+    const cfg=await backend.loadConfig();
+    if(Array.isArray(cfg.participant_fields) && cfg.participant_fields.length){
+      FIELD_LIST=cfg.participant_fields; indexFields();
+    }
+    PRESETS = Array.isArray(cfg.presets) ? cfg.presets : [];
+  }catch(e){ PRESETS=[]; }
   app.innerHTML=`<div class="brand"><img src="${brandOf(DEFAULT_BRAND).logo}" alt="" style="height:26px"><span>${esc(CONFIG.CAFE_NAME)}・後台</span></div>
     ${backend.demo?'<div class="banner">🔧 示範模式：資料存在瀏覽器記憶體，重新整理會還原。設定好 Supabase 後即為正式資料。</div>':''}
     <div class="tabs2">
       <button class="t2 on" data-t="events">活動總覽</button>
       <button class="t2" data-t="new">新增活動</button>
       <button class="t2" data-t="members">會員</button>
+      <button class="t2" data-t="config">設定</button>
     </div>
     <div id="panel"></div>
     ${backend.demo?'':'<button class="btn ghost" id="out" style="margin-top:16px">登出</button>'}`;
@@ -526,6 +593,7 @@ function switchTab(name){
   tabs.forEach(x=> x.classList.toggle('on', x.dataset.t===name));
   if(name==='new') renderNewEventPanel();
   else if(name==='members') renderMembersPanel();
+  else if(name==='config') renderConfigPanel();
   else renderEventsPanel();
 }
 
@@ -542,9 +610,10 @@ function renderNewEventPanel(){
       <h1 style="font-size:20px">建立新活動</h1>
       <label>活動類型（選一個範本，下面仍可個別調整）</label>
       <div class="presets" id="presets">
-        ${Object.entries(PRESETS).map(([k,v])=>`<button type="button" class="pst" data-k="${k}">
-          <span class="pstb" style="background:${BRANDS[v.brand].theme.accent}"></span>
-          <span class="pstt">${esc(v.label)}</span><span class="pstd">${esc(v.hint)}</span></button>`).join('')}
+        ${PRESETS.length ? PRESETS.map((v,i)=>`<button type="button" class="pst" data-k="${i}">
+          <span class="pstb" style="background:${brandOf(v.brand).theme.accent}"></span>
+          <span class="pstt">${esc(v.label||'')}</span><span class="pstd">${esc(v.hint||'')}</span></button>`).join('')
+          : '<div class="pfnote">尚未設定範本，可到「設定」分頁新增。</div>'}
       </div>
       <label for="br">品牌</label>
       <select id="br">${Object.entries(BRANDS).map(([k,b])=>
@@ -578,8 +647,8 @@ function renderNewEventPanel(){
         <input id="mp" type="number" min="2" max="20" value="4"></div>
       <label style="margin-top:16px">要逐位收集的參與者資料</label>
       <div class="pfpick" id="pfpick">
-        ${Object.entries(PFIELDS).map(([k,d])=>`<label class="pfchk">
-          <input type="checkbox" data-pf="${k}"${k==='name'?'':''}> ${esc(d.label)}</label>`).join('')}
+        ${FIELD_LIST.map(d=>`<label class="pfchk">
+          <input type="checkbox" data-pf="${esc(d.key)}"> ${esc(d.label||d.key)}</label>`).join('')}
       </div>
       <div class="pfnote" id="pfnote">不勾選＝只計算人數，不收集個別資料。</div>
       <label class="chk" id="ccbox"><input type="checkbox" id="cc" checked> 收集聯絡電話</label>
@@ -659,21 +728,238 @@ function renderLogin(){
   };
 }
 
-// 四種活動範本：一鍵設定好所有開關，之後仍可個別微調
-const PRESETS={
-  h_self:{ label:'HAMONDE・會員本人', hint:'指定時間，限會員本人，1 人',
-    brand:'hamonde', has_slots:false, allow_party:false, max_party:1,
-    members_only:true, contact:true, fields:[] },
-  h_party:{ label:'HAMONDE・會員報名', hint:'客人選時段，可帶同行者',
-    brand:'hamonde', has_slots:true, allow_party:true, max_party:4,
-    members_only:true, contact:true, fields:[] },
-  q_lecture:{ label:'乾坤堂・講堂報名', hint:'指定時間，收姓名與性別',
-    brand:'qiankun', has_slots:false, allow_party:false, max_party:1,
-    members_only:false, contact:false, fields:['name','gender'] },
-  q_other:{ label:'乾坤堂・其他活動', hint:'指定時間，收完整參與者資料',
-    brand:'qiankun', has_slots:false, allow_party:false, max_party:1,
-    members_only:false, contact:false, fields:['name','gender','birth_year','address'] },
-};
+// ============================================================
+// 設定：參與者欄位與活動範本
+// ============================================================
+// 代碼只在內部使用。中文標籤轉不出英數代碼時改給隨機碼，
+// 避免一堆欄位都叫 field、field_2 分不出來
+function slugify(label, taken){
+  let base=String(label||'').trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  if(!base){
+    let k;
+    do { k='f_'+Math.random().toString(36).slice(2,8); } while(taken.includes(k));
+    return k;
+  }
+  let k=base, n=2;
+  while(taken.includes(k)){ k=base+'_'+n; n++; }
+  return k;
+}
+
+function renderConfigPanel(){
+  const panel=app.querySelector('#panel');
+  panel.innerHTML=`
+    <div class="card">
+      <h1 style="font-size:20px">參與者欄位</h1>
+      <p class="cfgnote">這些是建立活動時可以勾選要收集的項目。改了標籤之後，
+        既有活動的顯示與匯出也會跟著改。</p>
+      <div id="fieldlist"></div>
+      <button type="button" class="addslot" id="addfield">＋ 新增欄位</button>
+      <div class="err" id="ferr"></div>
+      <button class="btn" id="savefields" style="margin-top:12px">儲存欄位設定</button>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h1 style="font-size:20px">活動範本</h1>
+      <p class="cfgnote">建立活動時一鍵套用的設定組合。</p>
+      <div id="presetlist"></div>
+      <button type="button" class="addslot" id="addpreset">＋ 新增範本</button>
+      <div class="err" id="perr"></div>
+      <button class="btn" id="savepresets" style="margin-top:12px">儲存範本設定</button>
+    </div>`;
+
+  drawFieldEditor(panel);
+  drawPresetEditor(panel);
+
+  // 標出哪些欄位正被活動使用，避免誤刪
+  backend.listEvents().then(evs=>{
+    const use={};
+    evs.forEach(e=>(e.participant_fields||[]).forEach(k=>{
+      (use[k]=use[k]||[]).push(e.title);
+    }));
+    panel._fieldUse=use;
+    panel.querySelectorAll('#fieldlist .cfgrow').forEach(r=>{
+      const n=(use[r.dataset.key]||[]).length;
+      if(n) r.querySelector('.cfgkey').insertAdjacentHTML('beforeend',
+        `　<span class="inuse">使用中：${n} 場活動</span>`);
+    });
+  }).catch(()=>{});
+}
+
+// ── 參與者欄位編輯 ────────────────────────────────────────
+function drawFieldEditor(panel){
+  const box=panel.querySelector('#fieldlist');
+  const row=d=>`<div class="cfgrow" data-key="${esc(d.key)}">
+    <div class="cfgline">
+      <div class="pf"><label>顯示名稱</label>
+        <input class="f-label" value="${esc(d.label||'')}"></div>
+      <div class="pf"><label>輸入型態</label>
+        <select class="f-type">
+          <option value="text"${d.type!=='select'&&d.type!=='number'?' selected':''}>文字</option>
+          <option value="select"${d.type==='select'?' selected':''}>下拉選單</option>
+          <option value="number"${d.type==='number'?' selected':''}>數字</option>
+        </select></div>
+      <button type="button" class="sdel f-del"${d.locked?' disabled title="姓名用於重複報名判別，不能刪除"':''}>✕</button>
+    </div>
+    <div class="cfgline sub">
+      <div class="pf"><label>提示文字</label>
+        <input class="f-ph" value="${esc(d.ph||'')}" placeholder="選填"></div>
+      <div class="pf f-optwrap"><label>選項（用逗號分隔）</label>
+        <input class="f-opts" value="${esc((d.opts||[]).join(','))}" placeholder="例：男,女,其他"></div>
+      <div class="pf f-numwrap"><label>最小／最大值</label>
+        <div style="display:flex;gap:6px">
+          <input class="f-min" value="${d.min!=null?d.min:''}" placeholder="最小" inputmode="numeric">
+          <input class="f-max" value="${d.max!=null?d.max:''}" placeholder="最大" inputmode="numeric">
+        </div></div>
+      <label class="pfchk f-widewrap"><input type="checkbox" class="f-wide"${d.wide?' checked':''}> 整行寬</label>
+    </div>
+    <div class="cfgkey">代碼：<code>${esc(d.key)}</code>${d.locked?'（內建，不可刪除）':''}</div>
+  </div>`;
+
+  box.innerHTML=FIELD_LIST.map(row).join('');
+
+  const sync=r=>{
+    const t=r.querySelector('.f-type').value;
+    r.querySelector('.f-optwrap').style.display = t==='select'?'':'none';
+    r.querySelector('.f-numwrap').style.display = t==='number'?'':'none';
+  };
+  const wire=r=>{
+    sync(r);
+    r.querySelector('.f-type').onchange=()=>sync(r);
+    const del=r.querySelector('.f-del');
+    if(!del.disabled) del.onclick=()=>{
+      const used=(panel._fieldUse||{})[r.dataset.key]||[];
+      if(used.length && !confirm(
+        `「${r.querySelector('.f-label').value||r.dataset.key}」正被 ${used.length} 場活動使用：\n`
+        + used.slice(0,5).join('\n') + (used.length>5?`\n…等 ${used.length} 場`:'')
+        + '\n\n刪除後，這些活動的報名表將不再詢問此欄位，'
+        + '後台與匯出也只會顯示欄位代碼。已經收到的資料不會消失。\n\n確定要刪除嗎？')) return;
+      r.remove();
+    };
+  };
+  box.querySelectorAll('.cfgrow').forEach(wire);
+
+  panel.querySelector('#addfield').onclick=()=>{
+    const taken=[...box.querySelectorAll('.cfgrow')].map(r=>r.dataset.key);
+    const key=slugify('field', taken);
+    box.insertAdjacentHTML('beforeend', row({key, label:'', type:'text'}));
+    const r=box.lastElementChild; wire(r);
+    r.dataset.isNew='1';
+    r.querySelector('.f-label').focus();
+  };
+
+  panel.querySelector('#savefields').onclick=async()=>{
+    const err=panel.querySelector('#ferr'); err.textContent='';
+    const rows=[...box.querySelectorAll('.cfgrow')];
+    if(!rows.length){ err.textContent='至少要保留一個欄位。'; return; }
+    const out=[]; const keys=[];
+    for(const r of rows){
+      const label=r.querySelector('.f-label').value.trim();
+      if(!label){ err.textContent='每個欄位都要有顯示名稱。'; return; }
+      let key=r.dataset.key;
+      // 新增的欄位依名稱產生代碼，既有欄位的代碼不動（活動設定會參照）
+      if(r.dataset.isNew==='1') key=slugify(label, keys);
+      if(keys.includes(key)){ err.textContent='欄位代碼重複了，請換個名稱。'; return; }
+      keys.push(key);
+      const d={key, label, type:r.querySelector('.f-type').value};
+      const ph=r.querySelector('.f-ph').value.trim(); if(ph) d.ph=ph;
+      if(d.type==='select'){
+        const opts=r.querySelector('.f-opts').value.split(/[,，]/).map(x=>x.trim()).filter(Boolean);
+        if(!opts.length){ err.textContent=`「${label}」是下拉選單，請至少填一個選項。`; return; }
+        d.opts=opts;
+      }
+      if(d.type==='number'){
+        const mn=r.querySelector('.f-min').value.trim(), mx=r.querySelector('.f-max').value.trim();
+        if(mn!=='') d.min=+mn;
+        if(mx!=='') d.max=+mx;
+        if(d.min!=null&&d.max!=null&&d.min>d.max){ err.textContent=`「${label}」的最小值大於最大值。`; return; }
+      }
+      if(r.querySelector('.f-wide').checked) d.wide=true;
+      if(FIELD_LIST.find(f=>f.key===key && f.locked)) d.locked=true;
+      out.push(d);
+    }
+    if(!out.some(d=>d.key==='name')){ err.textContent='「姓名」欄位不能移除，重複報名判別需要它。'; return; }
+    const btn=panel.querySelector('#savefields'); btn.disabled=true; btn.textContent='儲存中…';
+    try{
+      await backend.saveConfig('participant_fields', out);
+      FIELD_LIST=out; indexFields();
+      toast('欄位設定已儲存');
+      drawFieldEditor(panel); drawPresetEditor(panel);
+    }catch(e){ err.textContent='儲存失敗：'+(e.message||'請稍後再試。'); }
+    btn.disabled=false; btn.textContent='儲存欄位設定';
+  };
+}
+
+// ── 活動範本編輯 ──────────────────────────────────────────
+function drawPresetEditor(panel){
+  const box=panel.querySelector('#presetlist');
+  const row=v=>`<div class="cfgrow">
+    <div class="cfgline">
+      <div class="pf"><label>範本名稱</label><input class="p-label" value="${esc(v.label||'')}"></div>
+      <div class="pf"><label>品牌</label>
+        <select class="p-brand">${Object.entries(BRANDS).map(([k,b])=>
+          `<option value="${k}"${v.brand===k?' selected':''}>${esc(b.name)}</option>`).join('')}</select></div>
+      <button type="button" class="sdel p-del" title="刪除這個範本">✕</button>
+    </div>
+    <div class="cfgline sub">
+      <div class="pf wide"><label>說明</label><input class="p-hint" value="${esc(v.hint||'')}"></div>
+    </div>
+    <div class="cfgline sub">
+      <label class="pfchk"><input type="checkbox" class="p-hs"${v.has_slots?' checked':''}> 開放時段</label>
+      <label class="pfchk"><input type="checkbox" class="p-mo"${v.members_only?' checked':''}> 限會員</label>
+      <label class="pfchk"><input type="checkbox" class="p-cc"${v.contact!==false?' checked':''}> 收聯絡電話</label>
+      <label class="pfchk"><input type="checkbox" class="p-ap"${v.allow_party?' checked':''}> 可攜伴</label>
+      <div class="pf" style="max-width:120px"><label>每組上限</label>
+        <input class="p-mp" inputmode="numeric" value="${v.max_party||1}"></div>
+    </div>
+    <div class="cfgline sub">
+      <div style="width:100%"><label style="margin-bottom:4px">收集的參與者資料</label>
+      <div class="pfpick">${FIELD_LIST.map(d=>`<label class="pfchk">
+        <input type="checkbox" class="p-f" data-k="${esc(d.key)}"${(v.fields||[]).includes(d.key)?' checked':''}>
+        ${esc(d.label||d.key)}</label>`).join('')}</div></div>
+    </div>
+  </div>`;
+
+  box.innerHTML=PRESETS.map(row).join('')
+    || '<div class="pfnote">尚未設定任何範本</div>';
+  const wire=r=>{ r.querySelector('.p-del').onclick=()=>{ r.remove(); }; };
+  box.querySelectorAll('.cfgrow').forEach(wire);
+
+  panel.querySelector('#addpreset').onclick=()=>{
+    box.querySelector('.pfnote')?.remove();
+    box.insertAdjacentHTML('beforeend', row({brand:DEFAULT_BRAND, max_party:1, contact:true, fields:[]}));
+    const r=box.lastElementChild; wire(r);
+    r.querySelector('.p-label').focus();
+  };
+
+  panel.querySelector('#savepresets').onclick=async()=>{
+    const err=panel.querySelector('#perr'); err.textContent='';
+    const out=[];
+    for(const r of box.querySelectorAll('.cfgrow')){
+      const label=r.querySelector('.p-label').value.trim();
+      if(!label){ err.textContent='每個範本都要有名稱。'; return; }
+      const fields=[...r.querySelectorAll('.p-f')].filter(x=>x.checked).map(x=>x.dataset.k);
+      const mo=r.querySelector('.p-mo').checked;
+      out.push({
+        id: slugify(label, out.map(x=>x.id)),
+        label, hint:r.querySelector('.p-hint').value.trim(),
+        brand:r.querySelector('.p-brand').value,
+        has_slots:r.querySelector('.p-hs').checked,
+        members_only:mo,
+        contact: mo ? true : r.querySelector('.p-cc').checked,
+        allow_party: fields.length ? false : r.querySelector('.p-ap').checked,
+        max_party: Math.max(parseInt(r.querySelector('.p-mp').value,10)||1, 1),
+        fields,
+      });
+    }
+    const btn=panel.querySelector('#savepresets'); btn.disabled=true; btn.textContent='儲存中…';
+    try{
+      await backend.saveConfig('presets', out);
+      PRESETS=out; toast('範本設定已儲存'); drawPresetEditor(panel);
+    }catch(e){ err.textContent='儲存失敗：'+(e.message||'請稍後再試。'); }
+    btn.disabled=false; btn.textContent='儲存範本設定';
+  };
+}
 
 // ============================================================
 // 編輯活動
@@ -819,6 +1105,12 @@ function buildEditor(box, e){
 // 匯出報名名單（CSV）
 // 管理者已登入，直接在瀏覽器產生檔案，不需要任何額外金鑰
 // ============================================================
+// 參與者的欄位值：新資料存在 data，舊資料仍在原本的欄位
+function pval(p, key){
+  const v = (p && p.data && p.data[key] != null && p.data[key] !== '') ? p.data[key] : p?.[key];
+  return (v == null) ? '' : String(v);
+}
+
 function csvCell(v){
   const t=String(v==null?'':v);
   return /[",\n\r]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t;
@@ -841,7 +1133,7 @@ function exportRegs(e, regs, slots){
   head.push('人數');
   if(pf.length){
     head.push('第幾位');
-    pf.forEach(k=> head.push(PFIELDS[k]?PFIELDS[k].label:k));
+    pf.forEach(k=> head.push(fieldDef(k).label||k));
   }
   const rows=[head];
   regs.forEach((r,i)=>{
@@ -854,9 +1146,10 @@ function exportRegs(e, regs, slots){
     if(pf.length && ps.length){
       ps.forEach((x,j)=>{
         const row=base.slice(); row.push(j+1);
-        pf.forEach(k=> row.push(k==='birth_year'
-          ? (x.birth_year!=null?'民國 '+x.birth_year+' 年次':'')
-          : (x[k]||'')));
+        pf.forEach(k=>{
+          const v=pval(x,k);
+          row.push(k==='birth_year' && v ? '民國 '+v+' 年次' : v);
+        });
         rows.push(row);
       });
     }else{
@@ -917,7 +1210,7 @@ function wireEventForm(panel){
 
   // 範本
   panel.querySelectorAll('.pst').forEach(b=> b.onclick=()=>{
-    const v=PRESETS[b.dataset.k];
+    const v=PRESETS[+b.dataset.k]; if(!v) return;
     panel.querySelectorAll('.pst').forEach(x=>x.classList.remove('on'));
     b.classList.add('on');
     br.value=v.brand;
@@ -926,7 +1219,7 @@ function wireEventForm(panel){
     panel.querySelector('#mp').value=v.max_party;
     mo.checked=v.members_only;
     cc.checked=v.contact!==false;
-    pfBoxes.forEach(x=> x.checked=v.fields.includes(x.dataset.pf));
+    pfBoxes.forEach(x=> x.checked=(v.fields||[]).includes(x.dataset.pf));
     syncBrand(); syncFields(); syncContact();
     toast('已套用範本：'+v.label);
   });
@@ -1117,7 +1410,7 @@ async function buildDetail(detail, e){
     <div class="dmeta"><span class="bdot" style="background:${
         BRANDS[e.brand||DEFAULT_BRAND].theme.accent}"></span>${esc(brandOf(e.brand).name)}${
         (e.participant_fields||[]).length?`　·　收集：${(e.participant_fields||[])
-          .map(k=>PFIELDS[k]?PFIELDS[k].label:k).join('、')}`:''}</div>
+          .map(k=>fieldDef(k).label||k).join('、')}`:''}</div>
     ${e.has_slots?`<div class="dn-title">時段狀況</div>
       <div class="slotstat">${slots.map(x=>`<div class="ss${x.taken>=x.quota?' full':''}">
         <span class="sst">${esc(fmtTime(x.starts_at))}</span>
@@ -1183,12 +1476,23 @@ async function buildDetail(detail, e){
   if(!rs.length){ n.innerHTML='<div style="color:var(--muted)">目前還沒有人報名</div>'; return; }
 
   const slotTime=id=>{ const x=slots.find(y=>y.id===id); return x?fmtTime(x.starts_at):''; };
+  const pkeys=(e.participant_fields||[]);
   const pdetail=r=>{
     const ps=r.participants||[];
     if(!ps.length) return '';
-    return `<div class="plist2">${ps.map((x,i)=>`<div class="pline">${i+1}. ${esc(x.name||'')}${
-      x.gender?'　'+esc(x.gender):''}${x.birth_year?'　民國 '+esc(String(x.birth_year))+' 年次':''}${
-      x.address?'<br><span class="paddr">'+esc(x.address)+'</span>':''}</div>`).join('')}</div>`;
+    return `<div class="plist2">${ps.map((x,i)=>{
+      const main=[], sub=[];
+      pkeys.forEach(k=>{
+        const v=pval(x,k); if(!v) return;
+        if(k==='name') return;
+        const d=fieldDef(k);
+        const txt=(k==='birth_year')?('民國 '+v+' 年次'):v;
+        (d.wide ? sub : main).push(k==='gender'?txt:`${d.label||k} ${txt}`);
+      });
+      return `<div class="pline">${i+1}. ${esc(pval(x,'name'))}${
+        main.length?'　'+esc(main.join('　')):''}${
+        sub.length?'<br><span class="paddr">'+esc(sub.join('　'))+'</span>':''}</div>`;
+    }).join('')}</div>`;
   };
   const line=(r,i)=>`<div class="nrow"><span>${i+1}. ${esc(r.name)}　${r.phone?esc(r.phone):'<span style="color:var(--muted)">未留聯絡方式</span>'}${
       (r.party_size||1)>1?`　<b class="pty">${r.party_size} 位</b>`:''}</span>
