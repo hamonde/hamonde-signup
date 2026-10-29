@@ -199,6 +199,13 @@
   .cfgkey code{background:#f3ead9; padding:1px 6px; border-radius:5px}
   .inuse{color:var(--accent-ink); background:#fff5e2; border:1px solid #f0dcae;
     padding:1px 7px; border-radius:999px}
+  .cfgfoot{margin-top:12px; padding-top:10px; border-top:1px dashed var(--line);
+    display:flex; justify-content:flex-end}
+  .delbtn{font:inherit; font-size:13px; padding:8px 14px; border-radius:10px; cursor:pointer;
+    border:1px solid #e7c3bd; background:#fff; color:#a6564b}
+  .delbtn:hover{background:#fdf3f1}
+  .dirtynote{font-size:13px; line-height:1.6; color:#7a5a12; background:#fff5e2;
+    border:1px solid #f0dcae; border-radius:10px; padding:10px 12px; margin-top:12px}
 
   /* 後台：編輯活動 */
   .editbox{margin-top:14px}

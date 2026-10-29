@@ -830,6 +830,7 @@ function renderFieldsPanel(){
         既有活動的顯示與匯出也會跟著改。</p>
       <div id="fieldlist"></div>
       <button type="button" class="addslot" id="addfield">＋ 新增欄位</button>
+      <div class="dirtynote" id="fdirty" hidden>⚠️ 有未儲存的變更，請按下方「儲存欄位設定」才會生效。</div>
       <div class="err" id="ferr"></div>
       <button class="btn" id="savefields" style="margin-top:12px">儲存欄位設定</button>
     </div>`;
@@ -859,6 +860,7 @@ function renderPresetsPanel(){
         套用時會一併帶入，再改日期就能開下一梯。</p>
       <div id="presetlist"></div>
       <button type="button" class="addslot" id="addpreset">＋ 新增範本</button>
+      <div class="dirtynote" id="pdirty" hidden>⚠️ 有未儲存的變更，請按下方「儲存範本設定」才會生效。</div>
       <div class="err" id="perr"></div>
       <button class="btn" id="savepresets" style="margin-top:12px">儲存範本設定</button>
     </div>`;
@@ -914,6 +916,7 @@ function drawFieldEditor(panel){
         + '\n\n刪除後，這些活動的報名表將不再詢問此欄位，'
         + '後台與匯出也只會顯示欄位代碼。已經收到的資料不會消失。\n\n確定要刪除嗎？')) return;
       r.remove();
+      const n=panel.querySelector('#fdirty'); if(n) n.hidden=false;
     };
   };
   box.querySelectorAll('.cfgrow').forEach(wire);
@@ -978,7 +981,6 @@ function drawPresetEditor(panel){
       <div class="pf"><label>品牌</label>
         <select class="p-brand">${Object.entries(BRANDS).map(([k,b])=>
           `<option value="${k}"${v.brand===k?' selected':''}>${esc(b.name)}</option>`).join('')}</select></div>
-      <button type="button" class="sdel p-del" title="刪除這個範本">✕</button>
     </div>
     <div class="cfgline sub">
       <div class="pf wide"><label>範本說明（只顯示在後台的範本按鈕上）</label>
@@ -1010,17 +1012,30 @@ function drawPresetEditor(panel){
         <input type="checkbox" class="p-f" data-k="${esc(d.key)}"${(v.fields||[]).includes(d.key)?' checked':''}>
         ${esc(d.label||d.key)}</label>`).join('')}</div></div>
     </div>
+    <div class="cfgfoot">
+      <button type="button" class="delbtn p-del">🗑 刪除這個範本</button>
+    </div>
   </div>`;
 
   box.innerHTML=PRESETS.map(row).join('')
     || '<div class="pfnote">尚未設定任何範本</div>';
-  const wire=r=>{ r.querySelector('.p-del').onclick=()=>{ r.remove(); }; };
+  const dirty=()=>{
+    const n=panel.querySelector('#pdirty');
+    if(n) n.hidden=false;
+  };
+  const wire=r=>{ r.querySelector('.p-del').onclick=()=>{
+    const nm=r.querySelector('.p-label').value.trim()||'這個範本';
+    if(!confirm(`確定刪除範本「${nm}」？\n（不影響已經建立的活動）`)) return;
+    r.remove(); dirty();
+    if(!box.querySelector('.cfgrow'))
+      box.innerHTML='<div class="pfnote">尚未設定任何範本</div>';
+  }; };
   box.querySelectorAll('.cfgrow').forEach(wire);
 
   panel.querySelector('#addpreset').onclick=()=>{
     box.querySelector('.pfnote')?.remove();
     box.insertAdjacentHTML('beforeend', row({brand:DEFAULT_BRAND, max_party:1, contact:true, fields:[]}));
-    const r=box.lastElementChild; wire(r);
+    const r=box.lastElementChild; wire(r); dirty();
     r.querySelector('.p-label').focus();
   };
 
