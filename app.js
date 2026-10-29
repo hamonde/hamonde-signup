@@ -358,6 +358,41 @@ function participantRow(defs, idx){
   </div>`;
 }
 
+// ============================================================
+// 記住這台裝置上填過的參與者，下次一鍵帶入
+// 只存在客人自己的瀏覽器，不會送到伺服器，也不會被別人查到
+// ============================================================
+const PEOPLE_KEY='hs_people_v1';
+const PEOPLE_MAX=12;
+
+function loadPeople(brand){
+  try{
+    const o=JSON.parse(localStorage.getItem(PEOPLE_KEY)||'{}');
+    return Array.isArray(o[brand]) ? o[brand] : [];
+  }catch(e){ return []; }      // 無痕模式或封鎖儲存時直接當作沒有
+}
+function savePeople(brand, list){
+  try{
+    const o=JSON.parse(localStorage.getItem(PEOPLE_KEY)||'{}');
+    o[brand]=list.slice(0, PEOPLE_MAX);
+    localStorage.setItem(PEOPLE_KEY, JSON.stringify(o));
+  }catch(e){}
+}
+function rememberPeople(brand, parts){
+  if(!parts || !parts.length) return;
+  const norm=t=>String(t||'').replace(/\s+/g,'').toLowerCase();
+  const list=loadPeople(brand);
+  parts.forEach(p=>{
+    if(!p || !String(p.name||'').trim()) return;
+    const i=list.findIndex(x=>norm(x.name)===norm(p.name));
+    const merged = i>=0 ? {...list[i], ...p} : {...p};
+    if(i>=0) list.splice(i,1);
+    list.unshift(merged);                    // 最近用過的排前面
+  });
+  savePeople(brand, list);
+}
+function forgetPeople(brand){ savePeople(brand, []); }
+
 // 單一欄位的檢查，回傳錯誤訊息或 null
 function checkField(d, v){
   v=String(v||'').trim();
@@ -423,6 +458,7 @@ async function renderRegister(slug){
       <select id="pt">${Array.from({length:maxParty},(_,i)=>
         `<option value="${i+1}">${i+1} 位${i?'（含同行者）':''}</option>`).join('')}</select>`:''}
     ${needP?`<label>參與者資料</label>
+      <div class="people" id="people" hidden></div>
       <div id="plist">${participantRow(pdefs,0)}</div>
       <button type="button" class="addp" id="addp">＋ 新增一位參與者</button>
       ${wantContact?`<label for="p" style="margin-top:18px">聯絡電話</label>
@@ -457,14 +493,50 @@ async function renderRegister(slug){
   const wireRow=row=>{ row.querySelector('.pdel').onclick=()=>{
     if(plist.querySelectorAll('.prow').length<=1) return;
     row.remove(); renumber(); }; };
+  const addRow=()=>{
+    const n=plist.querySelectorAll('.prow').length;
+    plist.insertAdjacentHTML('beforeend', participantRow(pdefs,n));
+    wireRow(plist.lastElementChild); renumber();
+    return plist.lastElementChild;
+  };
+
+  // 把一個記住的人填進某一列（只填這場活動有收的欄位）
+  const fillRow=(row, person)=>{
+    row.querySelectorAll('[data-k]').forEach(el=>{
+      const v=person[el.dataset.k];
+      if(v!=null && v!=='') el.value=v;
+    });
+  };
+  const firstEmptyRow=()=>[...plist.querySelectorAll('.prow')]
+    .find(r=>![...r.querySelectorAll('[data-k]')].some(el=>el.value.trim()));
+
+  const drawPeople=()=>{
+    const box=card.querySelector('#people');
+    const list=loadPeople(bkey);
+    if(!list.length){ box.hidden=true; box.innerHTML=''; return; }
+    box.hidden=false;
+    box.innerHTML=`<div class="peoplab">曾經在這台裝置填過的人，點一下帶入：</div>
+      <div class="peoplist">
+        ${list.map((p,i)=>`<button type="button" class="peochip" data-i="${i}">${esc(p.name||'')}</button>`).join('')}
+        <button type="button" class="peoclear">清除</button>
+      </div>`;
+    box.querySelectorAll('.peochip').forEach(b=> b.onclick=()=>{
+      const person=loadPeople(bkey)[+b.dataset.i]; if(!person) return;
+      fillRow(firstEmptyRow() || addRow(), person);
+      err.textContent='';
+    });
+    box.querySelector('.peoclear').onclick=()=>{
+      if(!confirm('清除這台裝置記住的參與者資料？\n（不影響已經送出的報名）')) return;
+      forgetPeople(bkey); drawPeople(); toast('已清除');
+    };
+  };
+
   if(needP){
     plist.querySelectorAll('.prow').forEach(wireRow); renumber();
     card.querySelector('#addp').onclick=()=>{
-      const n=plist.querySelectorAll('.prow').length;
-      plist.insertAdjacentHTML('beforeend', participantRow(pdefs,n));
-      wireRow(plist.lastElementChild); renumber();
-      plist.lastElementChild.querySelector('input,select')?.focus();
+      addRow().querySelector('input,select')?.focus();
     };
+    drawPeople();
   }
 
   // 讀出參與者資料
@@ -491,6 +563,7 @@ async function renderRegister(slug){
       return;
     }
     if(r.ok){
+      if(needP) rememberPeople(bkey, readParticipants());
       const sl=slots.find(x=>x.id===pickedSlot);
       const party=needP ? plist.querySelectorAll('.prow').length
                   : (card.querySelector('#pt') ? parseInt(card.querySelector('#pt').value,10) : 1);
@@ -902,7 +975,20 @@ function drawPresetEditor(panel){
       <button type="button" class="sdel p-del" title="刪除這個範本">✕</button>
     </div>
     <div class="cfgline sub">
-      <div class="pf wide"><label>說明</label><input class="p-hint" value="${esc(v.hint||'')}"></div>
+      <div class="pf wide"><label>範本說明（只顯示在後台的範本按鈕上）</label>
+        <input class="p-hint" value="${esc(v.hint||'')}"></div>
+    </div>
+    <div class="cfgline sub">
+      <div class="pf wide"><label>預設活動名稱</label>
+        <input class="p-title" value="${esc(v.title||'')}" placeholder="留空則套用範本時不帶入"></div>
+    </div>
+    <div class="cfgline sub">
+      <div class="pf wide"><label>預設活動說明</label>
+        <textarea class="p-desc" rows="3">${esc(v.description||'')}</textarea></div>
+    </div>
+    <div class="cfgline sub">
+      <div class="pf wide"><label>預設報名完成說明</label>
+        <textarea class="p-sm" rows="2">${esc(v.success_message||'')}</textarea></div>
     </div>
     <div class="cfgline sub">
       <label class="pfchk"><input type="checkbox" class="p-hs"${v.has_slots?' checked':''}> 開放時段</label>
@@ -950,6 +1036,9 @@ function drawPresetEditor(panel){
         allow_party: fields.length ? false : r.querySelector('.p-ap').checked,
         max_party: Math.max(parseInt(r.querySelector('.p-mp').value,10)||1, 1),
         fields,
+        title: r.querySelector('.p-title').value.trim(),
+        description: r.querySelector('.p-desc').value.trim(),
+        success_message: r.querySelector('.p-sm').value.trim(),
       });
     }
     const btn=panel.querySelector('#savepresets'); btn.disabled=true; btn.textContent='儲存中…';
@@ -1220,6 +1309,10 @@ function wireEventForm(panel){
     mo.checked=v.members_only;
     cc.checked=v.contact!==false;
     pfBoxes.forEach(x=> x.checked=(v.fields||[]).includes(x.dataset.pf));
+    // 範本有填才帶入，留空就不動使用者已經輸入的內容
+    if(v.title)           panel.querySelector('#t').value=v.title;
+    if(v.description)     panel.querySelector('#ds').value=v.description;
+    if(v.success_message) panel.querySelector('#sm').value=v.success_message;
     syncBrand(); syncFields(); syncContact();
     toast('已套用範本：'+v.label);
   });

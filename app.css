@@ -132,6 +132,16 @@
   .pline{font-size:13px; color:#4a3d31; padding:3px 0}
   .paddr{font-size:12px; color:var(--muted)}
 
+  /* 客人端：曾填過的人（只存在本機） */
+  .people{margin:8px 0 2px}
+  .peoplab{font-size:12px; color:var(--muted); margin-bottom:6px}
+  .peoplist{display:flex; flex-wrap:wrap; gap:6px}
+  .peochip{font:inherit; font-size:13px; padding:6px 13px; border-radius:999px; cursor:pointer;
+    border:1px solid var(--line); background:#fff; color:var(--accent-ink)}
+  .peochip:hover{border-color:var(--accent); background:#fdf6ea}
+  .peoclear{font:inherit; font-size:12px; padding:6px 10px; border-radius:999px; cursor:pointer;
+    border:1px dashed var(--line); background:transparent; color:var(--muted)}
+
   /* 客人端：時段選擇 */
   .slotpick{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
   .slotbtn{font:inherit; font-size:14px; font-weight:600; padding:10px 16px; border-radius:11px;
