@@ -650,7 +650,8 @@ async function renderAdmin(){
       <button class="t2 on" data-t="events">活動總覽</button>
       <button class="t2" data-t="new">新增活動</button>
       <button class="t2" data-t="members">會員</button>
-      <button class="t2" data-t="config">設定</button>
+      <button class="t2" data-t="fields">參與者欄位</button>
+      <button class="t2" data-t="presets">活動範本</button>
     </div>
     <div id="panel"></div>
     ${backend.demo?'':'<button class="btn ghost" id="out" style="margin-top:16px">登出</button>'}`;
@@ -666,7 +667,8 @@ function switchTab(name){
   tabs.forEach(x=> x.classList.toggle('on', x.dataset.t===name));
   if(name==='new') renderNewEventPanel();
   else if(name==='members') renderMembersPanel();
-  else if(name==='config') renderConfigPanel();
+  else if(name==='fields') renderFieldsPanel();
+  else if(name==='presets') renderPresetsPanel();
   else renderEventsPanel();
 }
 
@@ -819,7 +821,7 @@ function slugify(label, taken){
   return k;
 }
 
-function renderConfigPanel(){
+function renderFieldsPanel(){
   const panel=app.querySelector('#panel');
   panel.innerHTML=`
     <div class="card">
@@ -830,19 +832,8 @@ function renderConfigPanel(){
       <button type="button" class="addslot" id="addfield">＋ 新增欄位</button>
       <div class="err" id="ferr"></div>
       <button class="btn" id="savefields" style="margin-top:12px">儲存欄位設定</button>
-    </div>
-
-    <div class="card" style="margin-top:16px">
-      <h1 style="font-size:20px">活動範本</h1>
-      <p class="cfgnote">建立活動時一鍵套用的設定組合。</p>
-      <div id="presetlist"></div>
-      <button type="button" class="addslot" id="addpreset">＋ 新增範本</button>
-      <div class="err" id="perr"></div>
-      <button class="btn" id="savepresets" style="margin-top:12px">儲存範本設定</button>
     </div>`;
-
   drawFieldEditor(panel);
-  drawPresetEditor(panel);
 
   // 標出哪些欄位正被活動使用，避免誤刪
   backend.listEvents().then(evs=>{
@@ -857,6 +848,21 @@ function renderConfigPanel(){
         `　<span class="inuse">使用中：${n} 場活動</span>`);
     });
   }).catch(()=>{});
+}
+
+function renderPresetsPanel(){
+  const panel=app.querySelector('#panel');
+  panel.innerHTML=`
+    <div class="card">
+      <h1 style="font-size:20px">活動範本</h1>
+      <p class="cfgnote">建立活動時一鍵套用的設定組合。填了預設文案的話，
+        套用時會一併帶入，再改日期就能開下一梯。</p>
+      <div id="presetlist"></div>
+      <button type="button" class="addslot" id="addpreset">＋ 新增範本</button>
+      <div class="err" id="perr"></div>
+      <button class="btn" id="savepresets" style="margin-top:12px">儲存範本設定</button>
+    </div>`;
+  drawPresetEditor(panel);
 }
 
 // ── 參與者欄位編輯 ────────────────────────────────────────
@@ -957,7 +963,7 @@ function drawFieldEditor(panel){
       await backend.saveConfig('participant_fields', out);
       FIELD_LIST=out; indexFields();
       toast('欄位設定已儲存');
-      drawFieldEditor(panel); drawPresetEditor(panel);
+      renderFieldsPanel();
     }catch(e){ err.textContent='儲存失敗：'+(e.message||'請稍後再試。'); }
     btn.disabled=false; btn.textContent='儲存欄位設定';
   };
